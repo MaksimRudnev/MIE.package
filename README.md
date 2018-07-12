@@ -1,5 +1,8 @@
 # MIE - Measurement invariance explorer
 
+To run, type in the RStudio console: `shiny::runGitHub("MIE", "maksimrudnev")`
+
+
 Invariance explorer helps to find groups that might demonstrate measurement invariance of latent factors.
 Instead of repeatedly running the models to test invariance, one may plot the group measures and visually select the ones that are closer to each other.
 * User may interactively include and exlude groups that look different (by clicking them), and the tool will automatically refit the models.
