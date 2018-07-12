@@ -2,3 +2,10 @@
 .Rhistory
 .RData
 .Ruserdata
+.Rbuildignore
+LICENSE
+MIE.Rproj
+pack_for_github.R
+papers
+rsconnect
+unnecessary
