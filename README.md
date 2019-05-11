@@ -42,6 +42,9 @@ write.csv(mydata[,c("country", "v1", "v2", "v3", "v4", "v5", "v6")], "fileforMIE
 This app is very useful when there are either clusters of groups or outlier groups (in terms of implied model/correlations).
 The app is not very suitable for finding model misspecifications.
 
+### Sister methods - mixture
+For the more sophisticated model-based clustering see https://ppw.kuleuven.be/okp/_pdf/DeRoover2017MSFAF.pdf
+However this method is limited to differences in factor loadings only, does not provide information on specific between-group distances, and is heavly dependent on a single model fit index (BIC). In practive this method is available only with proprietary software.
 
 <!---
 ## Technical manual #######
@@ -59,6 +62,14 @@ The app is not very suitable for finding model misspecifications.
 
 ##### Listeners #####
 Model fitting is done by functions in `observeEvent(input$measure`): depending on the selection of measure, it computes either covariance matrix, MGCFA configural model (and extracts factor loadings), MGCFA metric model (extracting intercepts), pairwise configural and metric MGCFA, or metric and scalar MGCFA (extracting difference in model fit indices).
+
+
+# Bugs and further developments
+
+Overall MGCFA is refitted each time the group is removed. Works properly only when Options is clicked.
+
+The circle should be circle, fix the coord_equal everywhere. Now can be fixed with + and - tools.
+
 -->
 
 

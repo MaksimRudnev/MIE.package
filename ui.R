@@ -93,7 +93,7 @@ shinyUI(
                      choices=c("CFI"="cfi", "RMSEA"="rmsea", "SRMR"="srmr"))
        ),
       hr(),
-      checkboxInput("semTools", "Run full invariance testing for a given subset of groups")
+      checkboxInput("semTools", "Run global invariance tests for a given subset of groups")
       
       #selectInput("rounds", 
       #             "Choose the ESS round",

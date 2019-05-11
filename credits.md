@@ -1,5 +1,5 @@
 ## Credits
-* Version 0.2 (alpha). March-16-2018
+* Version 0.3 (alpha). Feb-10-2019
 * Created by [Maksim Rudnev](http://maksimrudnev.com), using Zsofia Ignacz's [idea](https://www.europeansurveyresearch.org/conference/programme2017?sess=19#357).
 * Behind all multiple groups factor models stands [```lavaan```](http://lavaan.ugent.be/) package.
 * Plots are built on multidimensional scaling algorithm in ```cmdscale```. Inputs are Eucledean distances for covariances, correlations, and parameters, and raw increments in fit indices for the increment options.
@@ -11,9 +11,10 @@ This program is free software distributed under the terms of the [GNU General Pu
 
 ## Citation:
 ```
-Rudnev M. (2018) Measurement Invariance Explorer. Retrieved from: https://rudnev.shinyapps.io/measurement_invariance_explorer/
+Rudnev M. (2018) Measurement Invariance Explorer. Retrieved from: https://github.com/MaksimRudnev/MIE
 ```
 
 ## Bug reports and suggestions:
 
-https://github.com/MaksimRudnev/MeasurementInvarianceExplorer/issues
+https://github.com/MaksimRudnev/MIE/issues
+

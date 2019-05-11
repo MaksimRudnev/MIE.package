@@ -30,8 +30,12 @@ pairs_of_countries <- function(variable) {
 }
 
 #.. Compute the MGCFA model for a given pair of groups #####
-pairwiseFit <- function(data, pairs.of.countries, model, constraints=c(""), message="Fitting pairwise lavaan models"
-                       # , extra.options
+pairwiseFit <- function(data, 
+                        pairs.of.countries, 
+                        model, 
+                        constraints=c(""), 
+                        message="Fitting pairwise lavaan models"
+                       #, extra.options
                         
                         ) {
   
@@ -40,7 +44,8 @@ pairwiseFit <- function(data, pairs.of.countries, model, constraints=c(""), mess
 
     model.lav<- cfa(model, data=data[data$cntry==pairs.of.countries[1,1] | 
                                      data$cntry==pairs.of.countries[2,2],],
-                           group="cntry", group.equal=constraints)
+                           group="cntry", group.equal=constraints#, extra.options
+                    )
                      
     if(model.lav@optim$converged) mod<- fitmeasures(model.lav) else mod <- rep(999, 41)
     
@@ -55,7 +60,8 @@ pairwiseFit <- function(data, pairs.of.countries, model, constraints=c(""), mess
       
       model.lav<- cfa(model, data=data[data$cntry==pairs.of.countries[x,1] | 
                                        data$cntry==pairs.of.countries[x,2],],
-                      group="cntry", group.equal=constraints)
+                      group="cntry", group.equal=constraints#, extra.options
+                      )
       
       #If converged, record fitmeasure; if not converged add a missing sign 999.
       if(model.lav@optim$converged) mod[,x]<- fitmeasures(model.lav) else mod[,x]<- rep(999, 41)
@@ -110,6 +116,7 @@ MGCFA.parameters <- function(data, configural.or.metric, model, extra.options) {
     #mod<-cfa(model, data, group="cntry", group.equal=constraint)
     options(show.error.messages = FALSE)
     cfa.argument.list <- c(extra.options, list(model=model, data=data, group="cntry", group.equal=constraint))
+    #message(cfa.argument.list)
     mod<-try(do.call("cfa",  cfa.argument.list, quote = FALSE), silent=TRUE)
     
     # Show error message or extract the parameters
@@ -196,6 +203,30 @@ compute_correlation <- function(data) {
   #sapply(unique(dt$dat$cntry), function(x) 
   #  var(dt$dat[dt$dat$cntry==x,-1], use="complete.obs")[lower.tri(var(dt$dat[dt$dat$cntry==x,-1], use="complete.obs"),diag = F)]
   #)
+}
+
+
+
+measurementInvariance <- function(...) {
+  
+  r.conf<-lavaan::cfa(...)
+  r.metric<-lavaan::cfa(..., group.equal = "loadings")
+  r.scalar<-lavaan::cfa(..., group.equal = c("loadings", "intercepts"))
+  
+  #print(r.conf@call[-3])
+  
+  out <- lavaan::lavTestLRT(r.conf, r.metric, r.scalar, model.names = c("Configural", "Metric", "Scalar"))
+  #out <- out[,names(out)[c(4, 1, 5, 6)]]
+  out2<-t(sapply(list(r.conf, r.metric, r.scalar),   fitmeasures)[c("cfi", "tli", "rmsea", "srmr"),])
+  out2.2 <- apply(out2, 2, function(x) (c(NA, x[2]-x[1], x[3]-x[2]  )))
+  colnames(out2.2)<- paste("∆", toupper(colnames(out2.2)), sep="")
+  out2.3 <- t(Reduce("rbind", lapply(1:ncol(out2), function(x) rbind(out2[,x], out2.2[,x]))))
+  colnames(out2.3)<-toupper(as.vector(sapply(1:length(colnames(out2)), function(i) c(colnames(out2)[i], colnames(out2.2)[i]) )))
+  rownames(out2.3)<-c("Configural", "Metric", "Scalar")
+  print(out)
+  cat("\n")
+  print(round(out2.3, 3), digits=3, row.names = TRUE, na.print = "" )
+  
 }
 
 
@@ -401,8 +432,11 @@ subsettingMatrices <- reactive ({
       # Compute lacking pairs of conf models
       conf.pairwise<- pairwiseFit(dt$dat, 
                                   pairs.c, 
-                                    dt$model, 
-                                    c(""), 'Fitting pairwise configural models by lavaan')
+                                  dt$model, 
+                                    c(""),
+                                  'Fitting pairwise configural models by lavaan'#,
+                                  #extra.options = dt$extra.options
+                                  )
       
       
       # Merge with previous fits (if any)
@@ -448,7 +482,10 @@ subsettingMatrices <- reactive ({
       metric.additional<- pairwiseFit(dt$dat, 
                                       pairs.c, 
                                       dt$model, 
-                                      c("loadings"), 'Fitting pairwise metric models by lavaan')
+                                      c("loadings"), 
+                                      'Fitting pairwise metric models by lavaan'#,
+                                      #extra.options = dt$extra.options
+                                      )
       
       
       # Export 
@@ -527,7 +564,10 @@ subsettingMatrices <- reactive ({
       metric.pairwise<- pairwiseFit(dt$dat, 
                                       pairs.c, 
                                       dt$model, 
-                                      c("loadings"), 'Fitting extra pairwise scalar models by lavaan')
+                                      c("loadings"), 
+                                    'Fitting extra pairwise scalar models by lavaan'#,
+                                    #extra.options = dt$extra.options
+                                    )
       
       temp<- cbind(modelStorage$metric, metric.pairwise)
       attr(temp, "pairs.of.countries")<- rbind(attr(modelStorage$metric, "pairs.of.countries"),
@@ -555,7 +595,10 @@ subsettingMatrices <- reactive ({
       scalar.pairwise<- pairwiseFit(dt$dat, 
                                     pairs.c, 
                                       dt$model, 
-                                      c("loadings", "intercepts"), 'Fitting extra pairwise scalar models by lavaan')
+                                      c("loadings", "intercepts"), 
+                                    'Fitting extra pairwise scalar models by lavaan'#,
+                                    #extra.options = dt$extra.options
+                                    )
       
       temp<- cbind(modelStorage$scalar, scalar.pairwise)
       
@@ -827,9 +870,13 @@ subsettingMatrices <- reactive ({
     
     showModal(modalDialog(
       title = "lavaan options",
-      "Override defaults of `lavaan::cfa()` function. Put here the all the arguments beside formula, data, and group.",
+      "Override defaults of `lavaan::cfa()` function. Type here any argument beside formula, data, and group. This is an EXPERIMENTAL option, beware!",
       textAreaInput("model.options", "",
-                    rows=7, cols=25, placeholder="ordered=T, orthogonal=T, group.partial=c('person =~ impfree') ",
+                    rows=7, cols=25, 
+                    placeholder=
+"ordered = c('impfree', 'impfun'),
+orthogonal = TRUE,
+group.partial = c('person =~ impfree') ",
                     value = extra.options.string ),
       actionButton("save.model.options", "Save", class="buttonHighlighted"),
       modalButton("Close", icon=icon("times")),
@@ -839,7 +886,7 @@ subsettingMatrices <- reactive ({
   })
   
   observeEvent(input$save.model.options, {
-    l<-gsub("\"|“|”", "'", input$model.options)
+    l <- gsub("\"|“|”", "'", input$model.options)
     l <- paste( "list(", l, ")" )
     
     dt$extra.options <- eval(parse(text=l))
@@ -850,7 +897,7 @@ subsettingMatrices <- reactive ({
   
   
   
-  #..verbatim text ( mostly for semTools::measurementInvariance) ####
+  #..verbatim text ( mostly for measurementInvariance) ####
 
   observeEvent(input$semTools, {
  if(input$semTools==TRUE) {
@@ -861,12 +908,17 @@ subsettingMatrices <- reactive ({
    
   output$verb <- renderText ({
     
-    withProgress(message = 'Computing semTools::measurementInvariance', value = 0, {
+    withProgress(message = 'Computing global MI test', value = 0, {
       incProgress(1/2, detail = "")
-      library("semTools")
-      r<-capture.output(measurementInvariance(dt$model, data=selectedData(), group="cntry"))
-      paste("semTools::measurementInvariance output:",
-            paste(r[8:length(r)], collapse="\n"))
+      #library("semTools")
+      d=selectedData()
+      cfa.argument.list <- c(dt$extra.options, list(model=dt$model, data=d, group="cntry"))
+      r<-capture.output(do.call("measurementInvariance",  cfa.argument.list, quote = FALSE))
+      
+      # r<-capture.output(measurementInvariance(dt$model, data=d, group="cntry", dt$extra.options))
+
+      paste("Global MI output:","\n",
+            paste(r, collapse="\n"))
     
   })
   }) } else {
@@ -891,7 +943,7 @@ subsettingMatrices <- reactive ({
                   b=c("Covariances between all the variables in the dataset",
                       "Correlations between all the variables in the dataset",
         "Loadings from configural MGCFA model",
-        "Intercepts from configural MGCFA model",
+        "Intercepts from metric MGCFA model",
         paste(toupper(input$fitincrement.chosen),"difference between configural and metric models"),
         paste(toupper(input$fitincrement.chosen),"difference between metric and scalar models"))) 
     one<-
