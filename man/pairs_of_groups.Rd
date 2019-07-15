@@ -6,6 +6,9 @@
 \usage{
 pairs_of_groups(variable)
 }
+\arguments{
+\item{variable}{Grouping variable to find the set of all possible unique pairs of values.}
+}
 \description{
 Produce all possible pairs of groups
 }

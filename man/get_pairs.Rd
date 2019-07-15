@@ -6,6 +6,9 @@
 \usage{
 get_pairs(df)
 }
+\arguments{
+\item{df}{Any object with an attribute "pairs.of.groups"}
+}
 \description{
 Extract attribute 'pairs.of.groups'
 }

@@ -10,15 +10,15 @@
 
 #dat<-simMGCFA
 
-require(shiny)
-require("lavaan")
-require(magrittr)
-require(reshape2)
-require(markdown)
-require(DT)
-require(ggplot2)
-require(ggrepel)
-require(dplyr)
+# require(shiny)
+# require("lavaan")
+# require(magrittr)
+# require(reshape2)
+# require(markdown)
+# require(DT)
+# require(ggplot2)
+# require(ggrepel)
+# require(dplyr)
 options(shiny.maxRequestSize=100*1024^2) 
 
 

@@ -8,6 +8,8 @@ compute_correlation(data, group)
 }
 \arguments{
 \item{data}{Individual data}
+
+\item{group}{Character. Grouping variable}
 }
 \description{
 Computes and formats Fisher's transformed correlation matrices

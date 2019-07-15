@@ -3,6 +3,7 @@
 ## ..return all possible pairs of countries without duplicates based on variable #####
 #' Produce all possible pairs of groups
 #' 
+#' @param variable Grouping variable to find the set of all possible unique pairs of values.
 #' 
 #' @export
 pairs_of_groups <- function(variable) {
@@ -113,6 +114,8 @@ pairwiseFit <- function(model,
 # .. Extracts attribute ------
 
 #' Extract attribute 'pairs.of.groups'
+#' 
+#' @param df Any object with an attribute "pairs.of.groups"
 #' 
 #' @export
 get_pairs <- function(df)  attr(df, "pairs.of.groups")
@@ -273,6 +276,7 @@ compute_covariance <- function(data, group) {
 #' Computes and formats Fisher's transformed correlation matrices
 #' 
 #' @param data Individual data
+#' @param group Character. Grouping variable
 #' 
 #' @export
 compute_correlation <- function(data, group) {
@@ -328,7 +332,7 @@ MI_global <- function(...) {
   #out <- out[,names(out)[c(4, 1, 5, 6)]]
   out2<-t(sapply(list(r.conf, r.metric, r.scalar),   fitmeasures)[c("cfi", "tli", "rmsea", "srmr"),])
   out2.2 <- apply(out2, 2, function(x) (c(NA, x[2]-x[1], x[3]-x[2]  )))
-  colnames(out2.2)<- paste("∆", toupper(colnames(out2.2)), sep="")
+  colnames(out2.2)<- paste("diff.", toupper(colnames(out2.2)), sep="")
   out2.3 <- t(Reduce("rbind", lapply(1:ncol(out2), function(x) rbind(out2[,x], out2.2[,x]))))
   colnames(out2.3)<-toupper(as.vector(sapply(1:length(colnames(out2)), function(i) c(colnames(out2)[i], colnames(out2.2)[i]) )))
   rownames(out2.3)<-c("Configural", "Metric", "Scalar")
@@ -441,7 +445,7 @@ plotDistances <- function(measures, n.clusters = 4, fit.index="cfi", drop = NULL
     d$cluster <- clusters
     if(!is.null(drop)) d <- d[!(d$group %in% drop), !(colnames(d) %in% drop) ]
   
-    library(ggplot2); library(ggrepel)
+   # library(ggplot2); library(ggrepel)
     
  g<-  ggplot(d, aes(dim1, dim2,  col=as.factor(cluster)))+
     geom_point( size=5, show.legend = F)+labs(x="", y="", col="")+
