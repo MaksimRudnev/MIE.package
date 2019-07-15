@@ -22,218 +22,13 @@ require(dplyr)
 options(shiny.maxRequestSize=100*1024^2) 
 
 
-## Global functions #####
-
-## ..return all possible pairs of countries without duplicates based on variable #####
-pairs_of_countries <- function(variable) {
-  as.data.frame(t(combn(unique(variable), 2)), stringsAsFactors = F)
-}
-
-#.. Compute the MGCFA model for a given pair of groups #####
-pairwiseFit <- function(data, 
-                        pairs.of.countries, 
-                        model, 
-                        constraints=c(""), 
-                        message="Fitting pairwise lavaan models"
-                       #, extra.options
-                        
-                        ) {
-  
-  withProgress(message = message, value = 0, {   #Create progress bar
-    
-
-    model.lav<- cfa(model, data=data[data$cntry==pairs.of.countries[1,1] | 
-                                     data$cntry==pairs.of.countries[2,2],],
-                           group="cntry", group.equal=constraints#, extra.options
-                    )
-                     
-    if(model.lav@optim$converged) mod<- fitmeasures(model.lav) else mod <- rep(999, 41)
-    
-    # 41 is a number of fit indices currently provided by lavaan  
-    mod<-matrix( c(mod, rep(0,41*(nrow(pairs.of.countries)-1))), nrow=41, dimnames=list(names(mod), NULL))
-    
-    #Non-positive definite?
-    non.positive <- FALSE
-    
-    # Uses 'for' in order to show the progress bar
-    for(x in 2:nrow(pairs.of.countries)) {
-      
-      model.lav<- cfa(model, data=data[data$cntry==pairs.of.countries[x,1] | 
-                                       data$cntry==pairs.of.countries[x,2],],
-                      group="cntry", group.equal=constraints#, extra.options
-                      )
-      
-      #If converged, record fitmeasure; if not converged add a missing sign 999.
-      if(model.lav@optim$converged) mod[,x]<- fitmeasures(model.lav) else mod[,x]<- rep(999, 41)
-      
-      #Save non-positive definite status
-      
-      non.positive[[x]]<-lavInspect(model.lav, "post.check")==FALSE
-      
-      
-      incProgress(1/nrow(pairs.of.countries), detail = paste("Compute for pair of", pairs.of.countries[x,1], "and", pairs.of.countries[x,2]))
-    }
-    attr(mod, "pairs.of.countries")<-pairs.of.countries
-    #attr(mod, "model.formula")<-model
-   
-    # Show the status of non.positive
-    if(sum(non.positive)>0) showNotification(
-      "Non-positive definite matrix for ",
-        action=a(href = paste("javascript:alert('",
-                        paste(apply(pairs.of.countries[non.positive,], 1, paste, collapse=" & "), collapse=",
-                              \n"),
-                        "');"), paste( sum(non.positive),  "models (paired groups subsamples).") ), type="warning", duration=NULL  )
-    
-    mod
-    print(mod)
-  }) #close progress bar 
-}
-
-# .. Extracts attribute ------
-  get_pairs <- function(df)  attr(df, "pairs.of.countries")
-
-
-
-
-
-# .. Computes MGCFA models for all available groups in the data (or their subset) -----
-
-MGCFA.parameters <- function(data, configural.or.metric, model, extra.options) {
-  
-  if(is.null(model)) {
-    showNotification("The model is not specified", type="error")
-   # Errors$nomodel = TRUE
-    c("error")
-  } else {
-  
-  constraint <- ifelse(configural.or.metric=="metric", c("loadings"), "")
-  operator   <- ifelse(configural.or.metric=="metric", "~1", "=~")
-  #left.or.right <- ifelse(configural.or.metric=="metric", "lhs", "rhs")
-  
-  withProgress(message = paste("Computing", configural.or.metric, "MGCFA model for ALL the selected groups."), value = 0, { 
-    incProgress(1/2)
-  
-    #mod<-cfa(model, data, group="cntry", group.equal=constraint)
-    options(show.error.messages = FALSE)
-    cfa.argument.list <- c(extra.options, list(model=model, data=data, group="cntry", group.equal=constraint))
-    #message(cfa.argument.list)
-    mod<-try(do.call("cfa",  cfa.argument.list, quote = FALSE), silent=TRUE)
-    
-    # Show error message or extract the parameters
-    if(class(mod)=="try-error") {
-      
-      er1 <- paste(strsplit(mod, "ERROR: ")[[1]][2])
-      if(length(er1>299)) er1 <- paste(strtrim( er1, 300), "...", sep="")
-      
-      showNotification("Error in lavaan:", action=  er1, type="error", duration = NULL)
-      stop("Stopped due to error in lavaan")
-      rm(er1)
-      
-    } else {
-    
-    print("lavCALL"); print(mod@call[-3])
-    
-    #If non-positive definite, show notification
-    if(lavInspect(mod, "post.check")==FALSE) showNotification("The model produced non-positive definite matrix.",
-                                                              action = a(href = "javascript:location.reload();", "Reload page"))
-    
-    incProgress(1/2) 
-    # parameters<-cbind(mod@ParTable[["group"]][mod@ParTable$op==operator & mod@ParTable$free!=0],
-    #                   mod@ParTable[[left.or.right]][mod@ParTable$op==operator & mod@ParTable$free!=0],
-    #                   mod@ParTable[["est"]][mod@ParTable$op==operator & mod@ParTable$free!=0]
-    # )
-    # parameters.t<- parameters %>%  as.data.frame(.) %>% melt(., c("V1", "V2")) %>% dcast(., V1 ~ V2) 
-    
-    parameters.t <- parTable(mod) %>%
-      subset(., select=c("group", "lhs", "op", "rhs", "est"), subset=    op==operator & free!=0 ) %>%
-      mutate(par=paste(lhs, ifelse(operator=="=~", "_by_", ""), rhs, sep="")) %>%
-      melt(., c("group", "par"), measure.vars="est" ) %>% dcast(., group ~ par) 
-   
-    
-    print(paste("Fit model with", paste(mod@Data@group.label, collapse=",")))
-    #print("parameters.t"); print(parameters.t)
-    
-    parameters<-matrix(as.numeric(unlist(parameters.t[,-1])), 
-                       ncol=ncol(parameters.t)-1,
-                       nrow=nrow(parameters.t),
-                       dimnames=list(lavInspect(mod, "group.label"), #mod@Data@group.label, #parameters.t[,1], 
-                                     names(parameters.t[,-1]) ))
-    attr(parameters, "fit")<-fitmeasures(mod)
-    
-    parameters
-    }
-    
-  })
-  }
-}
-
-#.. Computes and formats covariance matrices ----
-compute_covariance <- function(data) {
-  
-  #    if(input$weights=="noweight") {
-  message("Computing covariance matrix")
-  
-  #Split dataset and compute variance-covariance for each group separately
-  dat.split<-split(data[,2:ncol(data)], data$cntry, drop = T)
-  #                                  #covariance matrix        #without duplications
-  tab<-sapply(dat.split, function(x) cov(x, use="complete.obs")[lower.tri(var(x, use="complete.obs"), diag = F)])
-  rownames(tab)<- apply(combn(names(data[,2:ncol(data)]), 2), 2, paste, collapse="_")
-  tab
-
-  #New version
-  #sapply(unique(dt$dat$cntry), function(x) 
-  #  var(dt$dat[dt$dat$cntry==x,-1], use="complete.obs")[lower.tri(var(dt$dat[dt$dat$cntry==x,-1], use="complete.obs"),diag = F)]
-  #)
-}
-
-#.. Computes and formats covariance matrices ----
-compute_correlation <- function(data) {
-  
-  #    if(input$weights=="noweight") {
-  message("Computing correlation matrix")
-  
-  #Split dataset and compute variance-covariance for each group separately
-  dat.split<-split(data[,2:ncol(data)], data$cntry, drop = T)
-  #                                  #covariance matrix        #without duplications
-  tab<-sapply(dat.split, function(x) psych::fisherz(cor(x, use="complete.obs")[lower.tri(var(x, use="complete.obs"), diag = F)]  ))
-  rownames(tab)<- apply(combn(names(data[,2:ncol(data)]), 2), 2, paste, collapse="_")
-  tab
-  
-  #New version
-  #sapply(unique(dt$dat$cntry), function(x) 
-  #  var(dt$dat[dt$dat$cntry==x,-1], use="complete.obs")[lower.tri(var(dt$dat[dt$dat$cntry==x,-1], use="complete.obs"),diag = F)]
-  #)
-}
-
-
-
-measurementInvariance <- function(...) {
-  
-  r.conf<-lavaan::cfa(...)
-  r.metric<-lavaan::cfa(..., group.equal = "loadings")
-  r.scalar<-lavaan::cfa(..., group.equal = c("loadings", "intercepts"))
-  
-  #print(r.conf@call[-3])
-  
-  out <- lavaan::lavTestLRT(r.conf, r.metric, r.scalar, model.names = c("Configural", "Metric", "Scalar"))
-  #out <- out[,names(out)[c(4, 1, 5, 6)]]
-  out2<-t(sapply(list(r.conf, r.metric, r.scalar),   fitmeasures)[c("cfi", "tli", "rmsea", "srmr"),])
-  out2.2 <- apply(out2, 2, function(x) (c(NA, x[2]-x[1], x[3]-x[2]  )))
-  colnames(out2.2)<- paste("∆", toupper(colnames(out2.2)), sep="")
-  out2.3 <- t(Reduce("rbind", lapply(1:ncol(out2), function(x) rbind(out2[,x], out2.2[,x]))))
-  colnames(out2.3)<-toupper(as.vector(sapply(1:length(colnames(out2)), function(i) c(colnames(out2)[i], colnames(out2.2)[i]) )))
-  rownames(out2.3)<-c("Configural", "Metric", "Scalar")
-  print(out)
-  cat("\n")
-  print(round(out2.3, 3), digits=3, row.names = TRUE, na.print = "" )
-  
-}
+#source("server.functions.R")
 
 
 # Begin the SHINY code #####
 shinyServer(function(session, input, output) {
  
-  
+
 ### Values ####
   dt<-reactiveValues ( 
     dat = NULL,
@@ -245,6 +40,8 @@ shinyServer(function(session, input, output) {
   # social=~ impenv +ipeqopt +ipudrst +iplylfr +iphlppl +impsafe +ipstrgv +ipfrule +ipbhprp +ipmodst +imptrad;"
 
   )  
+  
+ 
   
   temp <- reactiveValues (
     old.model.configural.MGCFA = NULL,
@@ -279,6 +76,40 @@ shinyServer(function(session, input, output) {
     current = NULL
   )
   
+  
+  # Reading in the data from globalEnv ####
+# reactive({ 
+  if(!is.null(.data) & !is.null(.group) ) { 
+    local.data <- .data[, c(colnames(ess_trimmed)[colnames(ess_trimmed) == .group],
+                       colnames(ess_trimmed)[colnames(ess_trimmed) != .group])]
+    print(colnames(local.data))
+    colnames(local.data)[1] <- "cntry"
+    print("changed the data order")
+  } else if (!is.null(.data) & is.null(.group) ) {
+    local.data <- .data
+    
+  }
+  
+  
+  if(!is.null(.model)) { 
+    dt$model = .model
+    updateCheckboxInput(session, "use.formula", value=TRUE)
+  }
+  
+  
+  if(!is.null(.data)) {
+     dt$dat = local.data
+  #print("unique(dt$dat$cntry)"); print(unique(dt$dat$cntry))
+  vals$keeprows = unique(isolate(dt$dat$cntry))
+  vals$excluded <- NULL
+  modelStorage$covariance <- compute_covariance(isolate(dt$dat), group = "cntry")
+  
+  showNotification("Using data from the R object.", type="message", duration=10)
+  }
+# }) 
+  
+  
+  
   # .. Button for using simulated data #####
   observeEvent(input$useSimulated, {
     dt$dat = read.csv("simulated2.csv")
@@ -289,14 +120,16 @@ shinyServer(function(session, input, output) {
     #print("unique(dt$dat$cntry)"); print(unique(dt$dat$cntry))
     vals$keeprows = unique(dt$dat$cntry)
     vals$excluded <- NULL
-    print(paste("Button play with fake data has been used."))
+    print(paste("Button 'play with fake data' has been used."))
     
-    modelStorage$covariance <- compute_covariance(dt$dat)
+    modelStorage$covariance <- compute_covariance(dt$dat, group = "cntry")
     
     showNotification("Using fake data for testing the tool.", type="warning", duration=10)
   })
   
-##Event input new data file #### It resets the settings and computes covariance
+##Event input new data file #### 
+  #It resets the settings and computes covariance
+  
   observeEvent(input$file1, {
  
     #Force the measure selection to covariance 
@@ -311,10 +144,12 @@ shinyServer(function(session, input, output) {
     
     #Read the data
     showNotification("Reading data...")
-    dt$dat<-read.csv(input$file1$datapath, header = T)
-    names(dt$dat)[1]<-c("cntry")
-    dt$dat$cntry<-as.factor(dt$dat$cntry) # Hmm...
-    
+    d<-read.csv(input$file1$datapath, header = T)
+    names(d)[1]<-c("cntry")
+    d$cntry<-as.factor(d$cntry) # Hmm...
+    dt$dat <- d
+    print(paste(colnames(d), collapse="; "))
+    rm(d)
     #Set subsets to NULL
         vals$keeprows <- unique(dt$dat$cntry)
         vals$excluded = NULL
@@ -330,7 +165,7 @@ shinyServer(function(session, input, output) {
     
     #Compute covariance matrix   
     #Split dataset and compute variance-covariance for each group separately
-        modelStorage$covariance<-compute_covariance(isolate(dt$dat))
+        modelStorage$covariance<-compute_covariance(isolate(dt$dat), group = "cntry")
         
         #print( str(modelStorage$covariance))
        # print(head(dt$dat))
@@ -383,7 +218,7 @@ subsettingMatrices <- reactive ({
   } else if ( input$measure =="correlation") {
     
     
-    modelStorage$correlation<-compute_correlation(isolate(dt$dat))[, vals$keeprows]
+    modelStorage$correlation<-compute_correlation(isolate(dt$dat), group="cntry")[, vals$keeprows]
     
    #print("modelStorage$correlation"); print(class(modelStorage$correlation))
     
@@ -405,7 +240,7 @@ subsettingMatrices <- reactive ({
     
     # Fitting configural pairwise models  
     if(is.null(modelStorage$conf) |
-       sum(vals$keeprows %in% unique(unlist(attr(modelStorage$conf, "pairs.of.countries")))==FALSE) >0 |
+       sum(vals$keeprows %in% unique(unlist(attr(modelStorage$conf, "pairs.of.groups")))==FALSE) >0 |
        ifelse( !is.null(dt$model),
                ifelse(!is.null(attr(modelStorage$conf, "model.formula")),
                       dt$model!=attr(modelStorage$conf, "model.formula"), TRUE), FALSE))     {
@@ -417,32 +252,34 @@ subsettingMatrices <- reactive ({
       if(!is.null(modelStorage$conf) & !ifelse( !is.null(dt$model),
                                                 ifelse(!is.null(attr(modelStorage$conf, "model.formula")),
                                                        dt$model!=attr(modelStorage$conf, "model.formula"), TRUE), FALSE)) {
-        extra.countries <- vals$keeprows[!vals$keeprows %in% unique(unlist(attr(modelStorage$conf, "pairs.of.countries")))]
-        pairs.c <- expand.grid(extra.countries, unique(unlist(attr(modelStorage$conf, "pairs.of.countries"))), stringsAsFactors = F)
-        names(pairs.c)<-names(attr(modelStorage$conf, "pairs.of.countries"))
+        extra.countries <- vals$keeprows[!vals$keeprows %in% unique(unlist(attr(modelStorage$conf, "pairs.of.groups")))]
+        pairs.c <- expand.grid(extra.countries, unique(unlist(attr(modelStorage$conf, "pairs.of.groups"))), stringsAsFactors = F)
+        names(pairs.c)<-names(attr(modelStorage$conf, "pairs.of.groups"))
         print("Configural models were already computed, but there are some new pairs to compute.")
         
         
       } else {
         print("No configural model in storage, or new formula, so compute the whole thing for all selected groups")
-        pairs.c <- pairs_of_countries(as.character(vals$keeprows))
+        pairs.c <- pairs_of_groups(as.character(vals$keeprows))
       }
       
       print("pairs.c"); print(pairs.c)
       # Compute lacking pairs of conf models
-      conf.pairwise<- pairwiseFit(dt$dat, 
-                                  pairs.c, 
-                                  dt$model, 
-                                    c(""),
-                                  'Fitting pairwise configural models by lavaan'#,
+      conf.pairwise<- pairwiseFit(model = dt$model,
+                                  data  = dt$dat, 
+                                  group = "cntry",
+                                  constraints = c(""),
+                                  pairs.of.groups = pairs.c, 
+                                  message = 'Fitting pairwise configural models by lavaan',
+                                  shiny = TRUE#,
                                   #extra.options = dt$extra.options
                                   )
       
       
       # Merge with previous fits (if any)
       temp<- cbind(modelStorage$conf, conf.pairwise)
-      attr(temp, "pairs.of.countries")<- rbind(attr(modelStorage$conf, "pairs.of.countries"),
-                                               attr(conf.pairwise, "pairs.of.countries"))
+      attr(temp, "pairs.of.groups")<- rbind(attr(modelStorage$conf, "pairs.of.groups"),
+                                               attr(conf.pairwise, "pairs.of.groups"))
       attr(temp, "model.formula") <- dt$model
       
       modelStorage$conf <- temp
@@ -453,7 +290,7 @@ subsettingMatrices <- reactive ({
     
     
     if(is.null(modelStorage$metric) |
-       sum(vals$keeprows %in% unique(unlist(attr(modelStorage$metric, "pairs.of.countries")))==FALSE) >0|
+       sum(vals$keeprows %in% unique(unlist(attr(modelStorage$metric, "pairs.of.groups")))==FALSE) >0|
        ifelse( !is.null(dt$model),
                ifelse(!is.null(attr(modelStorage$metric, "model.formula")),
                       dt$model!=attr(modelStorage$metric, "model.formula"), TRUE), FALSE) )  {
@@ -468,30 +305,32 @@ subsettingMatrices <- reactive ({
                                                          dt$model!=attr(modelStorage$metric, "model.formula"), TRUE), FALSE)) {
         print("Making a subset of existing metric models")
         
-        extra.countries <- vals$keeprows[!vals$keeprows %in% unique(unlist(attr(modelStorage$metric, "pairs.of.countries")))]
-        pairs.c <- expand.grid(extra.countries, unique(unlist(attr(modelStorage$metric, "pairs.of.countries"))), stringsAsFactors = F)
-        names(pairs.c)<-names(attr(modelStorage$metric, "pairs.of.countries"))
+        extra.countries <- vals$keeprows[!vals$keeprows %in% unique(unlist(attr(modelStorage$metric, "pairs.of.groups")))]
+        pairs.c <- expand.grid(extra.countries, unique(unlist(attr(modelStorage$metric, "pairs.of.groups"))), stringsAsFactors = F)
+        names(pairs.c)<-names(attr(modelStorage$metric, "pairs.of.groups"))
         
       } else {
         
         print("None of metric models were computed")
-        pairs.c<-pairs_of_countries(as.character(vals$keeprows))
+        pairs.c<-pairs_of_groups(as.character(vals$keeprows))
       }
       
       ##Compute lacking pairs of metric models
-      metric.additional<- pairwiseFit(dt$dat, 
-                                      pairs.c, 
-                                      dt$model, 
-                                      c("loadings"), 
-                                      'Fitting pairwise metric models by lavaan'#,
+      metric.additional<- pairwiseFit(model = dt$model, 
+                                      data = dt$dat, 
+                                      group="cntry",
+                                      constraints = c("loadings"),
+                                      pairs.of.groups = pairs.c, 
+                                      message='Fitting pairwise metric models by lavaan',
+                                      shiny=TRUE#,
                                       #extra.options = dt$extra.options
                                       )
       
       
       # Export 
       temp<- cbind(modelStorage$metric, metric.additional)
-      attr(temp, "pairs.of.countries")<- rbind(attr(modelStorage$metric, "pairs.of.countries"),
-                                               attr(metric.additional, "pairs.of.countries"))
+      attr(temp, "pairs.of.groups")<- rbind(attr(modelStorage$metric, "pairs.of.groups"),
+                                               attr(metric.additional, "pairs.of.groups"))
       attr(temp, "model.formula") <- dt$model
       modelStorage$metric <- temp
       
@@ -547,63 +386,67 @@ subsettingMatrices <- reactive ({
     message("Fitting increment scalar/metric...")
     
     # Fitting metric models
-    if(is.null(modelStorage$metric) | sum(vals$keeprows %in% unique(unlist(attr(modelStorage$metric, "pairs.of.countries")))==FALSE) >0 ) 
+    if(is.null(modelStorage$metric) | sum(vals$keeprows %in% unique(unlist(attr(modelStorage$metric, "pairs.of.groups")))==FALSE) >0 ) 
     {
       
       if(!is.null(modelStorage$metric)) {
-        extra.countries <- vals$keeprows[!vals$keeprows %in% unique(unlist(attr(modelStorage$metric, "pairs.of.countries")))]
+        extra.countries <- vals$keeprows[!vals$keeprows %in% unique(unlist(attr(modelStorage$metric, "pairs.of.groups")))]
         
-        pairs.c <- expand.grid(extra.countries, unique(unlist(attr(modelStorage$metric, "pairs.of.countries"))), stringsAsFactors = F)
-        names(pairs.c)<-names(attr(modelStorage$metric, "pairs.of.countries"))
+        pairs.c <- expand.grid(extra.countries, unique(unlist(attr(modelStorage$metric, "pairs.of.groups"))), stringsAsFactors = F)
+        names(pairs.c)<-names(attr(modelStorage$metric, "pairs.of.groups"))
       } else {
-        pairs.c <- pairs_of_countries(as.character(vals$keeprows))
+        pairs.c <- pairs_of_groups(as.character(vals$keeprows))
       }
       
       print("pairs.c"); print(str(pairs.c))
       ##Compute lacking pairs of metric models
-      metric.pairwise<- pairwiseFit(dt$dat, 
-                                      pairs.c, 
-                                      dt$model, 
-                                      c("loadings"), 
-                                    'Fitting extra pairwise scalar models by lavaan'#,
+      metric.pairwise<- pairwiseFit(model = dt$model, 
+                                    data = dt$dat, 
+                                    group="cntry",
+                                    constraints = c("loadings"), 
+                                    pairs.of.groups = pairs.c, 
+                                    message='Fitting extra pairwise scalar models by lavaan',
+                                    shiny=TRUE#,
                                     #extra.options = dt$extra.options
                                     )
       
       temp<- cbind(modelStorage$metric, metric.pairwise)
-      attr(temp, "pairs.of.countries")<- rbind(attr(modelStorage$metric, "pairs.of.countries"),
-                                               attr(metric.pairwise,      "pairs.of.countries"))
+      attr(temp, "pairs.of.groups")<- rbind(attr(modelStorage$metric, "pairs.of.groups"),
+                                               attr(metric.pairwise,      "pairs.of.groups"))
       modelStorage$metric <- temp
       
     }
     
     
     # Fitting scalar models
-    if(is.null(modelStorage$scalar) | sum(vals$keeprows %in% unique(unlist(attr(modelStorage$scalar, "pairs.of.countries")))==FALSE) >0 ) 
+    if(is.null(modelStorage$scalar) | sum(vals$keeprows %in% unique(unlist(attr(modelStorage$scalar, "pairs.of.groups")))==FALSE) >0 ) 
     {
       if(!is.null(modelStorage$scalar)) {
-      extra.countries <- vals$keeprows[!vals$keeprows %in% unique(unlist(attr(modelStorage$scalar, "pairs.of.countries")))]
+      extra.countries <- vals$keeprows[!vals$keeprows %in% unique(unlist(attr(modelStorage$scalar, "pairs.of.groups")))]
       
-      pairs.c <- expand.grid(extra.countries, unique(unlist(attr(modelStorage$scalar, "pairs.of.countries"))), stringsAsFactors = F)
-      names(pairs.c)<-names(attr(modelStorage$scalar, "pairs.of.countries"))
+      pairs.c <- expand.grid(extra.countries, unique(unlist(attr(modelStorage$scalar, "pairs.of.groups"))), stringsAsFactors = F)
+      names(pairs.c)<-names(attr(modelStorage$scalar, "pairs.of.groups"))
       
       } else {
-        pairs.c <- pairs_of_countries(as.character(vals$keeprows))
+        pairs.c <- pairs_of_groups(as.character(vals$keeprows))
       }
       
       
       ##Compute lacking pairs of scalar models
-      scalar.pairwise<- pairwiseFit(dt$dat, 
-                                    pairs.c, 
-                                      dt$model, 
-                                      c("loadings", "intercepts"), 
-                                    'Fitting extra pairwise scalar models by lavaan'#,
+      scalar.pairwise<- pairwiseFit(model = dt$model, 
+                                    data = dt$dat, 
+                                    group="cntry",
+                                    constraints = c("loadings", "intercepts"), 
+                                    pairs.of.groups = pairs.c,
+                                    message='Fitting extra pairwise scalar models by lavaan',
+                                    shiny=TRUE#,
                                     #extra.options = dt$extra.options
                                     )
       
       temp<- cbind(modelStorage$scalar, scalar.pairwise)
       
-      attr(temp, "pairs.of.countries") <- rbind(attr(modelStorage$scalar, "pairs.of.countries"),
-                                                              attr(scalar.pairwise, "pairs.of.countries"))
+      attr(temp, "pairs.of.groups") <- rbind(attr(modelStorage$scalar, "pairs.of.groups"),
+                                                              attr(scalar.pairwise, "pairs.of.groups"))
       modelStorage$scalar <- temp
       
     }
@@ -680,8 +523,11 @@ subsettingMatrices <- reactive ({
     print("Subset is longer than computed model -> I am going to recalculate the whole model")
        #a<-Sys.time()
        
-       subset.loadings <- MGCFA.parameters(selectedData(), "configural", dt$model,
-                                           extra.options=dt$extra.options)
+       subset.loadings <- MGCFAparameters(model = dt$model,
+                                          data = selectedData(),
+                                          parameters = "loadings", 
+                                          extra.options=dt$extra.options, 
+                                          shiny=TRUE)
     
       #print(paste("Computed in", round(Sys.time()-a), "seconds."))
       
@@ -729,7 +575,11 @@ subsettingMatrices <- reactive ({
     
     print("Subset is longer than computed model -> I am going to recalculate the whole model")
     
-      subset.intercepts<- MGCFA.parameters(selectedData(), "metric", dt$model, extra.options=dt$extra.options)
+      subset.intercepts<- MGCFAparameters(model = dt$model,
+                                          data = selectedData(), 
+                                          parameters = "intercepts", 
+                                          extra.options=dt$extra.options, 
+                                          shiny=TRUE)
 
       modelStorage$intercepts <- subset.intercepts
       
@@ -897,7 +747,7 @@ group.partial = c('person =~ impfree') ",
   
   
   
-  #..verbatim text ( mostly for measurementInvariance) ####
+  #..verbatim text ( mostly for MI_global) ####
 
   observeEvent(input$semTools, {
  if(input$semTools==TRUE) {
@@ -913,9 +763,9 @@ group.partial = c('person =~ impfree') ",
       #library("semTools")
       d=selectedData()
       cfa.argument.list <- c(dt$extra.options, list(model=dt$model, data=d, group="cntry"))
-      r<-capture.output(do.call("measurementInvariance",  cfa.argument.list, quote = FALSE))
+      r<-capture.output(do.call("MI_global",  cfa.argument.list, quote = FALSE))
       
-      # r<-capture.output(measurementInvariance(dt$model, data=d, group="cntry", dt$extra.options))
+      # r<-capture.output(MI_global(dt$model, data=d, group="cntry", dt$extra.options))
 
       paste("Global MI output:","\n",
             paste(r, collapse="\n"))

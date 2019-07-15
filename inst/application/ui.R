@@ -90,7 +90,8 @@ shinyUI(
        conditionalPanel(
          condition = "input.measure == 'fitincrement.metric'|input.measure == 'fitincrement.scalar'",
          selectInput("fitincrement.chosen", "Select kind of fit measure",
-                     choices=c("CFI"="cfi", "RMSEA"="rmsea", "SRMR"="srmr"))
+                     choices=c("CFI"="cfi", "RMSEA"="rmsea", "SRMR"="srmr", "NNFI" = "nnfi", 
+                               "GFI" = "gfi", "rmsea.ci.upper" = "rmsea.ci.upper"))
        ),
       hr(),
       checkboxInput("semTools", "Run global invariance tests for a given subset of groups")
