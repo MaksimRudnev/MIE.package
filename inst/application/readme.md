@@ -1,6 +1,6 @@
-# MIE - Measurement invariance explorer
+# MIE - Measurement invariance explorer (R package)
 
-<!-- To run, type in the RStudio console: `shiny::runGitHub("MIE", "maksimrudnev")` -->
+ To install, type in the RStudio console: `devtools::install_github("maksimrudnev/MIE.package", dependencies = TRUE)`
 
 
 Invariance explorer helps to find groups that might demonstrate measurement invariance of latent factors.
@@ -33,6 +33,16 @@ To start, install the `MIE` package and run `runMIE()` function.
 
 ### Input data
 
+Using arguments of function `runMIE()` it is possible to feed the app with the data objects stored in your R memory. For example: 
+```
+runMIE("F =~ impfree + iphlppl + ipsuces + ipstrgv", ess[, 4:15], group = "country")
+```
+
+Limit the data to the variables used in the models, because the app will attempt to compute covariance and correlation using all the variables except for group variable.
+
+
+#### Uploading data within Shiny app
+
 First column should include a group identifier, all the other columns should include indicators. Covariances are computed for all the indicators. When a model is implied, the data file might include any number of variables. However, it is recommended to keep file shorter to enhance a computation time. For example:
 
 <img src="screenshot.png" alt="data" style="width: 300px;"/>
@@ -43,23 +53,16 @@ Here's a sample code to create data for the app in R from the data.frame:
 write.csv(mydata[,c("country", "v1", "v2", "v3", "v4", "v5", "v6")], "fileforMIE.csv", row.names = F)
 ```
 
-### Loading data and models directly from R
-
-Using arguments of function `runMIE()` it is possible to feed the app with the data objects stored in your R memory. For example: 
-```
-runMIE("F =~ impfree + iphlppl + ipsuces + ipstrgv", ess[, 4:15], group = "country")
-```
-
-Limit the data to the variables used in the models, because the app will attempt to compute covariance and correlation using all the variables except for group variable.
-
-
-### Main uses
+### Main purpose
 This app is very useful when there are either clusters of groups or outlier groups (in terms of implied model/correlations).
 The app is not very suitable for finding model misspecifications.
 
 ### Sister methods - mixture
+
 For the more sophisticated model-based clustering see https://ppw.kuleuven.be/okp/_pdf/DeRoover2017MSFAF.pdf
 However this method is limited to differences in factor loadings only, does not provide information on specific between-group distances, and is heavly dependent on a single model fit index (BIC). In practive this method is available only with proprietary software.
+
+Another method was suggested by [Cheung & Rensvold (2000)](https://doi.org/10.5465/apbpp.2000.5535968), but it occured to be of little use.
 
 <!---
 ## Technical manual #######
