@@ -194,7 +194,7 @@ MGCFAparameters <- function(model=NULL,
         #                   mod@ParTable[["est"]][mod@ParTable$op==operator & mod@ParTable$free!=0]
         # )
         # parameters.t<- parameters %>%  as.data.frame(.) %>% melt(., c("V1", "V2")) %>% dcast(., V1 ~ V2) 
-        requireNamespace(magrittr)
+        requireNamespace("magrittr")
         parameters.t <- lavaan::parTable(mod) %>%
           base::subset(., select=c("group", "lhs", "op", "rhs", "est"), subset = op==operator & free!=0 ) %>%
           dplyr::mutate(par=paste(lhs, ifelse(operator=="=~", "_by_", ""), rhs, sep="")) %>%
