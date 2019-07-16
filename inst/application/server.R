@@ -10,15 +10,15 @@
 
 #dat<-simMGCFA
 
-# require(shiny)
-# require("lavaan")
-# require(magrittr)
-# require(reshape2)
-# require(markdown)
-# require(DT)
-# require(ggplot2)
-# require(ggrepel)
-# require(dplyr)
+require("shiny")
+require("lavaan")
+require("magrittr")
+require("reshape2")
+require("markdown")
+require("DT")
+require("ggplot2")
+require("ggrepel")
+require("dplyr")
 options(shiny.maxRequestSize=100*1024^2) 
 
 
@@ -102,7 +102,7 @@ shinyServer(function(session, input, output) {
   #print("unique(dt$dat$cntry)"); print(unique(dt$dat$cntry))
   vals$keeprows = unique(isolate(dt$dat$cntry))
   vals$excluded <- NULL
-  modelStorage$covariance <- compute_covariance(isolate(dt$dat), group = "cntry")
+  modelStorage$covariance <- computeCovariance(isolate(dt$dat), group = "cntry")
   
   showNotification("Using data from the R object.", type="message", duration=10)
   }
@@ -122,7 +122,7 @@ shinyServer(function(session, input, output) {
     vals$excluded <- NULL
     print(paste("Button 'play with fake data' has been used."))
     
-    modelStorage$covariance <- compute_covariance(dt$dat, group = "cntry")
+    modelStorage$covariance <- computeCovariance(dt$dat, group = "cntry")
     
     showNotification("Using fake data for testing the tool.", type="warning", duration=10)
   })
@@ -165,7 +165,7 @@ shinyServer(function(session, input, output) {
     
     #Compute covariance matrix   
     #Split dataset and compute variance-covariance for each group separately
-        modelStorage$covariance<-compute_covariance(isolate(dt$dat), group = "cntry")
+        modelStorage$covariance<-computeCovariance(isolate(dt$dat), group = "cntry")
         
         #print( str(modelStorage$covariance))
        # print(head(dt$dat))
@@ -218,7 +218,7 @@ subsettingMatrices <- reactive ({
   } else if ( input$measure =="correlation") {
     
     
-    modelStorage$correlation<-compute_correlation(isolate(dt$dat), group="cntry")[, vals$keeprows]
+    modelStorage$correlation<-computeCorrelation(isolate(dt$dat), group="cntry")[, vals$keeprows]
     
    #print("modelStorage$correlation"); print(class(modelStorage$correlation))
     
@@ -747,7 +747,7 @@ group.partial = c('person =~ impfree') ",
   
   
   
-  #..verbatim text ( mostly for MI_global) ####
+  #..verbatim text ( mostly for globalMI) ####
 
   observeEvent(input$semTools, {
  if(input$semTools==TRUE) {
@@ -763,9 +763,9 @@ group.partial = c('person =~ impfree') ",
       #library("semTools")
       d=selectedData()
       cfa.argument.list <- c(dt$extra.options, list(model=dt$model, data=d, group="cntry"))
-      r<-capture.output(do.call("MI_global",  cfa.argument.list, quote = FALSE))
+      r<-capture.output(do.call("globalMI",  cfa.argument.list, quote = FALSE))
       
-      # r<-capture.output(MI_global(dt$model, data=d, group="cntry", dt$extra.options))
+      # r<-capture.output(globalMI(dt$model, data=d, group="cntry", dt$extra.options))
 
       paste("Global MI output:","\n",
             paste(r, collapse="\n"))

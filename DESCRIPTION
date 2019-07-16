@@ -13,8 +13,10 @@ Imports:
     lavaan,
     reshape2,
     markdown,
+    magrittr,
     DT,
-    dplyr
+    dplyr,
+    magrittr
 License: GPL-3
 Encoding: UTF-8
 LazyData: true

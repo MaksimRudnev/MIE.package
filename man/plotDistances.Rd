@@ -8,7 +8,7 @@ plotDistances(measures, n.clusters = 4, fit.index = "cfi",
   drop = NULL)
 }
 \arguments{
-\item{measures}{Can be result of `MGCFAparameters`, `compute_covariance`, `compute_correlation`, `incrementalFit`.}
+\item{measures}{Can be result of `MGCFAparameters`, `computeCovariance`, `computeCorrelation`, `incrementalFit`.}
 
 \item{n.clusters}{Number of clusters.}
 

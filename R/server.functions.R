@@ -7,7 +7,7 @@
 #' 
 #' @export
 pairs_of_groups <- function(variable) {
-  as.data.frame(t(combn(unique(as.character(variable)), 2)), stringsAsFactors = F)
+  as.data.frame(t(utils::combn(unique(as.character(variable)), 2)), stringsAsFactors = F)
 }
 
 #.. Compute the MGCFA model for a given pair of groups #####
@@ -40,12 +40,12 @@ pairwiseFit <- function(model,
   colnames(data)[1]<-"cntry"
   
   runPairwiseModels <- function() {
-    model.lav<- cfa(model, data=data[data$cntry==pairs.of.groups[1,1] | 
+    model.lav<- lavaan::cfa(model, data=data[data$cntry==pairs.of.groups[1,1] | 
                                        data$cntry==pairs.of.groups[2,2],],
                     group="cntry", group.equal=constraints#, extra.options
     )
     
-    if(model.lav@optim$converged) mod<- fitmeasures(model.lav) else mod <- rep(999, 41)
+    if(lavaan::lavInspect(model.lav, "converged")) mod<- lavaan::fitmeasures(model.lav) else mod <- rep(999, 41)
     
     # 41 is a number of fit indices currently provided by lavaan  
     mod<-matrix( c(mod, rep(0,41*(nrow(pairs.of.groups)-1))), nrow=41, dimnames=list(names(mod), NULL))
@@ -53,26 +53,26 @@ pairwiseFit <- function(model,
     #Non-positive definite?
     non.positive <- FALSE
     
-    # Uses 'for' in order to show the progress bar
+    # Uses 'for' instead of 'sapply' in order to show the progress bar
     for(x in 2:nrow(pairs.of.groups)) {
-      model.lav<- cfa(model, data=data[data$cntry==pairs.of.groups[x,1] | 
+      model.lav<- lavaan::cfa(model, data=data[data$cntry==pairs.of.groups[x,1] | 
                                          data$cntry==pairs.of.groups[x,2],],
                       group="cntry", group.equal=constraints#, extra.options
       )
       
       #If converged, record fitmeasure; if not converged add a missing sign 999.
-      if(model.lav@optim$converged) mod[,x]<- fitmeasures(model.lav) else mod[,x]<- rep(999, 41)
+      if(lavaan::lavInspect(model.lav, "converged")) mod[,x]<- lavaan::fitmeasures(model.lav) else mod[,x]<- rep(999, 41)
       
       #Save non-positive definite status
       
-      non.positive[[x]]<-lavInspect(model.lav, "post.check")==FALSE
+      non.positive[[x]]<-lavaan::lavInspect(model.lav, "post.check")==FALSE
       
       
      if(shiny) {
        incProgress(1/nrow(pairs.of.groups), 
                   detail = paste("Compute for pair of", pairs.of.groups[x,1], "and", pairs.of.groups[x,2]))
      } else {
-       setTxtProgressBar(pb, x/nrow(pairs.of.groups))
+       utils::setTxtProgressBar(pb, x/nrow(pairs.of.groups))
      }
     }
     attr(mod, "pairs.of.groups")<-pairs.of.groups
@@ -104,7 +104,7 @@ pairwiseFit <- function(model,
     print(mod)
   }) #close progress bar 
     } else {
-      pb <- txtProgressBar(title="Fitting pairwise models", style=3)
+      pb <- utils::txtProgressBar(title="Fitting pairwise models", style=3)
       mod <- runPairwiseModels()
       colnames(mod)<-apply(pairs.of.groups, 1, paste, collapse="_")
       mod
@@ -181,7 +181,7 @@ MGCFAparameters <- function(model=NULL,
         print("lavCALL"); print(mod@call[-3])
         
         #If non-positive definite, show notification
-        if(lavInspect(mod, "post.check")==FALSE & shiny) {
+        if(lavaan::lavInspect(mod, "post.check")==FALSE & shiny) {
           showNotification("The model produced non-positive definite matrix.",
                            action = a(href = "javascript:location.reload();", "Reload page"))
         } else if(lavInspect(mod, "post.check")==FALSE & !shiny) {
@@ -194,11 +194,11 @@ MGCFAparameters <- function(model=NULL,
         #                   mod@ParTable[["est"]][mod@ParTable$op==operator & mod@ParTable$free!=0]
         # )
         # parameters.t<- parameters %>%  as.data.frame(.) %>% melt(., c("V1", "V2")) %>% dcast(., V1 ~ V2) 
-        
-        parameters.t <- parTable(mod) %>%
-          subset(., select=c("group", "lhs", "op", "rhs", "est"), subset=    op==operator & free!=0 ) %>%
-          mutate(par=paste(lhs, ifelse(operator=="=~", "_by_", ""), rhs, sep="")) %>%
-          melt(., c("group", "par"), measure.vars="est" ) %>% dcast(., group ~ par) 
+        requireNamespace(magrittr)
+        parameters.t <- lavaan::parTable(mod) %>%
+          base::subset(., select=c("group", "lhs", "op", "rhs", "est"), subset = op==operator & free!=0 ) %>%
+          dplyr::mutate(par=paste(lhs, ifelse(operator=="=~", "_by_", ""), rhs, sep="")) %>%
+          reshape2::melt(., c("group", "par"), measure.vars="est" ) %>% reshape2::dcast(., group ~ par) 
         
         
         print(paste("Fit model with", paste(mod@Data@group.label, collapse=",")))
@@ -238,7 +238,7 @@ MGCFAparameters <- function(model=NULL,
 #' @param group Character, group variable
 #' 
 #' @export
-compute_covariance <- function(data, group) {
+computeCovariance <- function(data, group) {
   
   #    if(input$weights=="noweight") {
   message("Computing covariance matrix")
@@ -279,7 +279,7 @@ compute_covariance <- function(data, group) {
 #' @param group Character. Grouping variable
 #' 
 #' @export
-compute_correlation <- function(data, group) {
+computeCorrelation <- function(data, group) {
   
   #    if(input$weights=="noweight") {
   message("Computing correlation matrix")
@@ -320,7 +320,7 @@ compute_correlation <- function(data, group) {
 #' @param ... Formula, group, and all the other eligible arguments of `lavaan::cfa` function.
 #'
 #' @export
-MI_global <- function(...) {
+globalMI <- function(...) {
   
   r.conf<-lavaan::cfa(...)
   r.metric<-lavaan::cfa(..., group.equal = "loadings")
@@ -410,7 +410,7 @@ return(out)
 
 #' Plot distances using computed measures of distance
 #' 
-#' @param measures Can be result of `MGCFAparameters`, `compute_covariance`, `compute_correlation`, `incrementalFit`.
+#' @param measures Can be result of `MGCFAparameters`, `computeCovariance`, `computeCorrelation`, `incrementalFit`.
 #' @param n.clusters Number of clusters.
 #' @param fit.index Index to be used to in represneting measurement invariance distances. Only if the `measures` argument is an output of `incrementalFit`. Can be anything returned by `lavaan::fitMeasures`
 #' @param drop Vector of group names to be dropped from the plot.
@@ -429,13 +429,13 @@ plotDistances <- function(measures, n.clusters = 4, fit.index="cfi", drop = NULL
       dist1$V2 <- NULL
       dist1<-as.matrix(dist1)
       diag(dist1)<-rep(0, nrow(dist1)) 
-      mds1 <- cmdscale(dist1 * 1, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE)
-      clusters <- kmeans(dist1, n.clusters)$cluster
+      mds1 <- stats::cmdscale(dist1 * 1, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE)
+      clusters <- stats::kmeans(dist1, n.clusters)$cluster
       
     } else {
       
-      mds1 <- cmdscale(dist(measures) * 1, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE)
-      clusters <- kmeans(measures, n.clusters)$cluster
+      mds1 <- stats::cmdscale(dist(measures) * 1, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE)
+      clusters <- stats::kmeans(measures, n.clusters)$cluster
       
     }
     
@@ -446,7 +446,7 @@ plotDistances <- function(measures, n.clusters = 4, fit.index="cfi", drop = NULL
     if(!is.null(drop)) d <- d[!(d$group %in% drop), !(colnames(d) %in% drop) ]
   
    # library(ggplot2); library(ggrepel)
-    
+    requireNamespace(ggplot2)
  g<-  ggplot(d, aes(dim1, dim2,  col=as.factor(cluster)))+
     geom_point( size=5, show.legend = F)+labs(x="", y="", col="")+
     geom_text_repel(aes(label=group), point.padding = unit(.3, "lines"), show.legend=F)+
