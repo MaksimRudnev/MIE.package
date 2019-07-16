@@ -24,7 +24,7 @@
 # covars <- compute_covariance(ess_trimmed, group="country")
 # crs <-compute_correlation(ess_trimmed, "country")
 # 
-# intrcps <- MGCFAparameters("F =~ impfree + iphlppl + ipsuces + ipstrgv", ess_trimmed,
+# intrcps <- MGCFAparameters(model  = "F =~ impfree + iphlppl + ipsuces + ipstrgv", data=ess_trimmed,
 #                            group="country", parameters = "intercepts")
 # 
 # 

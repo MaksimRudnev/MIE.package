@@ -45,7 +45,7 @@ Limit the data to the variables used in the models, because the app will attempt
 
 First column should include a group identifier, all the other columns should include indicators. Covariances are computed for all the indicators. When a model is implied, the data file might include any number of variables. However, it is recommended to keep file shorter to enhance a computation time. For example:
 
-<img src="screenshot.png" alt="data" style="width: 300px;"/>
+<img src="inst/application/screenshot.png" alt="data" style="width: 300px;"/>
 
 Here's a sample code to create data for the app in R from the data.frame:
 

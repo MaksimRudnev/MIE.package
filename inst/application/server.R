@@ -10,15 +10,15 @@
 
 #dat<-simMGCFA
 
-require("shiny")
-require("lavaan")
-require("magrittr")
-require("reshape2")
-require("markdown")
-require("DT")
-require("ggplot2")
-require("ggrepel")
-require("dplyr")
+require("shiny", quietly = T)
+require("lavaan", quietly = T)
+require("magrittr", quietly = T)
+require("reshape2", quietly = T)
+require("markdown", quietly = T)
+require("DT", quietly = T)
+require("ggplot2", quietly = T)
+require("ggrepel", quietly = T)
+require("dplyr", quietly = T)
 options(shiny.maxRequestSize=100*1024^2) 
 
 
@@ -80,8 +80,8 @@ shinyServer(function(session, input, output) {
   # Reading in the data from globalEnv ####
 # reactive({ 
   if(!is.null(.data) & !is.null(.group) ) { 
-    local.data <- .data[, c(colnames(ess_trimmed)[colnames(ess_trimmed) == .group],
-                       colnames(ess_trimmed)[colnames(ess_trimmed) != .group])]
+    local.data <- .data[, c(colnames(.data)[colnames(.data) == .group],
+                       colnames(.data)[colnames(.data) != .group])]
     print(colnames(local.data))
     colnames(local.data)[1] <- "cntry"
     print("changed the data order")
@@ -182,7 +182,7 @@ shinyServer(function(session, input, output) {
       dat<-dt$dat
 
       dat<-dat[dat$cntry %in% vals$keeprows, ] 
-      dat$cntry<-droplevels(dat$cntry) 
+      if(is.factor(dat$cntry)) dat$cntry <- droplevels(dat$cntry) 
    
     dat
     
@@ -939,7 +939,20 @@ group.partial = c('person =~ impfree') ",
       #g<-g+geom_rect(aes(xmin=min(d$dim1) , xmax=min(d$dim1)+.01, ymin=min(d$dim2), ymax=min(d$dim2)+.01),
       #            show.legend = F, col="lightgray", fill=NA, linetype="dashed")
       
-      r=.005
+      
+   r=   switch(isolate(input$fitincrement.chosen), 
+             cfi=.005,
+             rmsea=.0075,
+             srmr=0,
+             nnfi=0,
+             gfi=0,
+             rmsea.ci.upper = 0
+             )
+   
+      print("this is r")
+      print(isolate(input$measure))
+      
+      #r=.005
       xc = min(d$dim1) +  sqrt(r^2/2)
       yc = min(d$dim2) +   sqrt(r^2/2)
       
@@ -948,7 +961,9 @@ group.partial = c('person =~ impfree') ",
       
       g<-g+geom_path(data=circle.data, aes(x,y#, label=NULL
                                            ), col="lightgray", linetype="dashed")
-      g<-g+labs(caption="The circle has diameter .01, meaning the increment \nin the fit index is within interval recommended by Chen")
+      if(r!=0) {
+      g<-g+labs(caption=paste("The circle has diameter", round(r*2, 3), "meaning the increment \nin the fit index is within interval recommended by Chen"))
+      }
       
     } else if (isolate(input$measure == "parameters.loadings")) {
       

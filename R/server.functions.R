@@ -201,6 +201,11 @@ MGCFAparameters <- function(model=NULL,
           reshape2::melt(., c("group", "par"), measure.vars="est" ) %>% reshape2::dcast(., group ~ par) 
         
         
+        se.t <- lavaan::parTable(mod) %>%
+          base::subset(., select=c("group", "lhs", "op", "rhs", "se"), subset = op==operator & free!=0 ) %>%
+          dplyr::mutate(par=paste(lhs, ifelse(operator=="=~", "_by_", ""), rhs, sep="")) %>%
+          reshape2::melt(., c("group", "par"), measure.vars="se" ) %>% reshape2::dcast(., group ~ par) 
+        
         print(paste("Fit model with", paste(mod@Data@group.label, collapse=",")))
         #print("parameters.t"); print(parameters.t)
         
@@ -209,7 +214,13 @@ MGCFAparameters <- function(model=NULL,
                            nrow=nrow(parameters.t),
                            dimnames=list(lavInspect(mod, "group.label"), #mod@Data@group.label, #parameters.t[,1], 
                                          names(parameters.t[,-1]) ))
+        se<-matrix(as.numeric(unlist(se.t[,-1])), 
+                           ncol=ncol(se.t)-1,
+                           nrow=nrow(se.t),
+                           dimnames=list(lavInspect(mod, "group.label"), #mod@Data@group.label, #se.t[,1], 
+                                         names(se.t[,-1]) ))
         attr(parameters, "fit")<-fitmeasures(mod)
+        attr(parameters, "se")<-fitmeasures(mod)
         class(mod)<- "MGCFAparameters"
         return(parameters)
       }
