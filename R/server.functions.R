@@ -11,7 +11,7 @@ pairs_of_groups <- function(variable) {
 }
 
 #.. Compute the MGCFA model for a given pair of groups #####
-#' Compute the MGCFA model for a given pair of groups
+#' Computes MGCFA model for a given pair of groups
 #' @param model Model in lavaan syntax
 #' @param data Data object
 #' @param group Character. Group variable name.
@@ -19,6 +19,7 @@ pairs_of_groups <- function(variable) {
 #' @param pairs.of.groups Full list of pairs of groups, used in shiny only.
 #' @param message Notification in shiny.
 #' @param shiny If it is executed in shiny environment.
+# @example # pairwiseFit(model="F =~ impfree + iphlppl + ipsuces + ipstrgv", data = ess6, group = "cntry", "loadings")
 #' 
 #' @return  The function returns matrix of fit indices for multiple group CFA models fitted to each possible pair of groups.
 #' 
@@ -34,7 +35,7 @@ pairwiseFit <- function(model,
                         
 ) {
   
-  if(is.null(pairs.of.groups)) pairs.of.groups <- pairs_of_groups(data[,group])
+  if(is.null(pairs.of.groups)) pairs.of.groups <- pairs_of_groups(data[[group]])
   data=data[,c(group, colnames(data)[colnames(data)!=group])]
   
   colnames(data)[1]<-"cntry"

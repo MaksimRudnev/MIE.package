@@ -2,7 +2,7 @@
 % Please edit documentation in R/server.functions.R
 \name{pairwiseFit}
 \alias{pairwiseFit}
-\title{Compute the MGCFA model for a given pair of groups}
+\title{Computes MGCFA model for a given pair of groups}
 \usage{
 pairwiseFit(model, data, group = "cntry", constraints = c(""),
   pairs.of.groups = NULL, message = "Fitting pairwise lavaan models",
@@ -27,5 +27,5 @@ pairwiseFit(model, data, group = "cntry", constraints = c(""),
 The function returns matrix of fit indices for multiple group CFA models fitted to each possible pair of groups.
 }
 \description{
-Compute the MGCFA model for a given pair of groups
+Computes MGCFA model for a given pair of groups
 }
