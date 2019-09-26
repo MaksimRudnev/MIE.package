@@ -2,7 +2,7 @@
 % Please edit documentation in R/server.functions.R
 \name{pairs_of_groups}
 \alias{pairs_of_groups}
-\title{Produce all possible pairs of groups}
+\title{Returns all possible pairs of countries without duplicates based on variable}
 \usage{
 pairs_of_groups(variable)
 }
@@ -10,5 +10,5 @@ pairs_of_groups(variable)
 \item{variable}{Grouping variable to find the set of all possible unique pairs of values.}
 }
 \description{
-Produce all possible pairs of groups
+Returns all possible pairs of countries without duplicates based on variable
 }

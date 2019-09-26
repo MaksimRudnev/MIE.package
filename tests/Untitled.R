@@ -51,3 +51,6 @@
 #     social=~ impenv +ipeqopt +ipudrst +iplylfr +iphlppl +impsafe +ipstrgv +ipfrule +ipbhprp +ipmodst +imptrad;",
 #    shiny=F, group="cntry", constraints = c("loadings", "intercepts"))
 # str(m1)
+
+
+

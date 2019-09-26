@@ -4,8 +4,8 @@
 \alias{plotDistances}
 \title{Plot distances using computed measures of distance}
 \usage{
-plotDistances(measures, n.clusters = 4, fit.index = "cfi",
-  drop = NULL)
+plotDistances(measures, n.clusters = "auto", fit.index = "cfi",
+  drop = NULL, dist.method = NULL)
 }
 \arguments{
 \item{measures}{Can be result of `MGCFAparameters`, `computeCovariance`, `computeCorrelation`, `incrementalFit`.}

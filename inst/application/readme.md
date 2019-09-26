@@ -88,6 +88,17 @@ Overall MGCFA is refitted each time the group is removed. Works properly only wh
 
 The circle should be circle, fix the coord_equal everywhere. Now can be fixed with + and - tools.
 
+# TODO #########
+
+- blavaan wrapper to approximate measurement invariance
+- alignment automation for Mplus
+- add measurementInvarianceMplus (see R file)
+- add approximateInvarianceMplus (create new)
+- move mgcfa.diagnose into this package
+- move lavScore_clean into this package
+- maybe ask Robitzch to move his alignment() function in here
+- change the name to measurement.invariance
+
 -->
 
 

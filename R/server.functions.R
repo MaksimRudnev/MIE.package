@@ -1,7 +1,6 @@
 ## Global functions #####
 
-## ..return all possible pairs of countries without duplicates based on variable #####
-#' Produce all possible pairs of groups
+#' Returns all possible pairs of countries without duplicates based on variable 
 #' 
 #' @param variable Grouping variable to find the set of all possible unique pairs of values.
 #' 
@@ -179,7 +178,7 @@ MGCFAparameters <- function(model=NULL,
         
       } else {
         
-        print("lavCALL"); print(mod@call[-3])
+        #print("lavCALL"); print(mod@call[-3])
         
         #If non-positive definite, show notification
         if(lavaan::lavInspect(mod, "post.check")==FALSE & shiny) {
@@ -207,7 +206,7 @@ MGCFAparameters <- function(model=NULL,
           dplyr::mutate(par=paste(lhs, ifelse(operator=="=~", "_by_", ""), rhs, sep="")) %>%
           reshape2::melt(., c("group", "par"), measure.vars="se" ) %>% reshape2::dcast(., group ~ par) 
         
-        print(paste("Fit model with", paste(mod@Data@group.label, collapse=",")))
+        #print(paste("Fit model with", paste(mod@Data@group.label, collapse=",")))
         #print("parameters.t"); print(parameters.t)
         
         parameters<-matrix(as.numeric(unlist(parameters.t[,-1])), 
@@ -294,7 +293,7 @@ computeCovariance <- function(data, group) {
 computeCorrelation <- function(data, group) {
   
   #    if(input$weights=="noweight") {
-  message("Computing correlation matrix")
+  # message("Computing correlation matrix")
   
   #Split dataset and compute variance-covariance for each group separately
   #
@@ -429,7 +428,9 @@ return(out)
 #' 
 #' @return Computes distances and performs multidimensional scaling (two-dimensional projection). Returns ggplot-based plot. 
 #' @export
-plotDistances <- function(measures, n.clusters = 4, fit.index="cfi", drop = NULL) {
+plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop = NULL, dist.method = NULL) {
+  pam1 = function(x, k){list(cluster = pam(x,k, cluster.only=TRUE))}
+  
   if(class(measures) == "covariances" | class(measures) == "correlations") measures <- t(measures)
     
     if(class(measures)=="incrementalFit") {
@@ -441,14 +442,40 @@ plotDistances <- function(measures, n.clusters = 4, fit.index="cfi", drop = NULL
       dist1$V2 <- NULL
       dist1<-as.matrix(dist1)
       diag(dist1)<-rep(0, nrow(dist1)) 
-      mds1 <- stats::cmdscale(dist1 * 1, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE)
-      clusters <- stats::kmeans(dist1, n.clusters)$cluster
+      # new line below converting raw fit measures to distances with varying method
+      dist2 <- dist(dist1, method = ifelse(is.null(dist.method), "maximum", dist.method   ))
+      
+      if(n.clusters == "auto") {
+      
+      library(cluster)
+      
+      gskmn = clusGap(as.matrix(dist2), FUN=pam1, K.max = attr(dist2, "Size")-1, B = 50, verbose = F)
+      n.clusters <- maxSE(f = gskmn$Tab[, "gap"], SE.f = gskmn$Tab[, "SE.sim"], method = "Tibs2001SEmax", SE.factor = 1) 
+      cat("\nOptimal number of clusters is ", n.clusters)
+      }
+      
+        
+        #clusters <- stats::kmeans(dist1, n.clusters)$cluster
+      clusters <- cluster::pam(dist2, diss =T, k = n.clusters)$clustering
+      
+      mds1 <- stats::cmdscale(dist2 * 1, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE)
+      
       
     } else {
+      dist1 <- dist(measures, method = ifelse(is.null(dist.method), "euclidean", dist.method   ))
+      mds1 <- stats::cmdscale(dist1 * 1, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE)
       
-      mds1 <- stats::cmdscale(dist(measures) * 1, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE)
-      clusters <- stats::kmeans(measures, n.clusters)$cluster
+      if(n.clusters == "auto") {
+        
+        library(cluster)
+        
+        gskmn = clusGap(as.matrix(dist1), FUN=pam1, K.max = attr(dist1, "Size")-1, B = 50, verbose = F)
+        n.clusters <- maxSE(f = gskmn$Tab[, "gap"], SE.f = gskmn$Tab[, "SE.sim"], method = "Tibs2001SEmax", SE.factor = 1) 
+        cat("\nOptimal number of clusters is ", n.clusters)
+      }
       
+      #clusters <- stats::kmeans(measures, n.clusters)$cluster
+      clusters <- cluster::pam(dist1, diss =T, k = n.clusters)$clustering
     }
     
     colnames(mds1) <- c("dim1", "dim2")
@@ -458,7 +485,8 @@ plotDistances <- function(measures, n.clusters = 4, fit.index="cfi", drop = NULL
     if(!is.null(drop)) d <- d[!(d$group %in% drop), !(colnames(d) %in% drop) ]
   
    # library(ggplot2); library(ggrepel)
-    requireNamespace(ggplot2)
+    requireNamespace("ggplot2")
+    requireNamespace("ggrepel")
  g<-  ggplot(d, aes(dim1, dim2,  col=as.factor(cluster)))+
     geom_point( size=5, show.legend = F)+labs(x="", y="", col="")+
     geom_text_repel(aes(label=group), point.padding = unit(.3, "lines"), show.legend=F)+
@@ -499,4 +527,44 @@ plotDistances <- function(measures, n.clusters = 4, fit.index="cfi", drop = NULL
  
  
 }
+
+
+
+#' Plots network based on pairwise fit indices reduced to Chen's cutoffs
+#'  
+#' @param measures The result of `incrementalFit`.
+#' @param fit.index Index to be used to in representing measurement invariance distances. Only if the `measures` argument is an output of `incrementalFit`. Can be "cfi", "rmsea", or "srmr", because only for these indices the cutoffs were suggested by Chen (2007).
+#' @details The function extracts a given fit indeces from pairwise fitted MGCFAs, and uses cutoff of .01 to identify edges between groups (nodes), so that the groups for whom  invariance is supported, are connected on the plot. The results are plotted using `igraph` package and clustered with `cluster_label_prop` method.
+#' @seealso cluster_label_prop
+#' @export         
+plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL) {
   
+  
+  #abs.thrshld <- switch(fit.index, cfi=function(x) `>`(x, .90), rmsea = function(x) `<`(x, .05))
+  if(is.null(cutoff)) {
+    #Chen's
+   thrshld <- switch(fit.index, 
+                         cfi   = function(x) `<`(x, .01),
+                         rmsea = function(x) `<`(x, .01),
+                         srmr  = function(x) `<`(x, .01))
+  
+  } else {
+    thrshld <- function(x) `<`(x, cutoff)
+  }
+  
+  mtrx <- measures$detailed[[fit.index]]
+  mtrx.df <- data.frame(
+    i = as.numeric(gsub("^.*_", "",  rownames(mtrx))), 
+    j = as.numeric(gsub("_.*$", "",  rownames(mtrx))),
+    # absolute
+    #tie = abs.thrshld(unname(mtrx[,2]))
+    
+    # incremental
+    tie = thrshld(unname(mtrx[,"fit.decrease"]))
+  )
+  
+  clp <- igraph::cluster_label_prop(graph_from_edgelist(as.matrix(mtrx.df[mtrx.df$tie,-3]), directed = F))
+  net <- igraph::graph_from_edgelist(as.matrix(mtrx.df[mtrx.df$tie,-3]), directed = F)
+  igraph:::plot.communities(clp, net)
+  
+}
