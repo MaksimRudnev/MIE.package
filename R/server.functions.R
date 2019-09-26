@@ -429,7 +429,7 @@ return(out)
 #' @return Computes distances and performs multidimensional scaling (two-dimensional projection). Returns ggplot-based plot. 
 #' @export
 plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop = NULL, dist.method = NULL) {
-  pam1 = function(x, k){list(cluster = pam(x,k, cluster.only=TRUE))}
+  pam1 = function(x, k){list(cluster = pam(x,k, diss = T, cluster.only=TRUE))}
   
   if(class(measures) == "covariances" | class(measures) == "correlations") measures <- t(measures)
     
