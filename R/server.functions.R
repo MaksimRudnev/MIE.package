@@ -500,7 +500,7 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
     scale_colour_hue(l = 50, c = 120)+
     theme(panel.grid = element_blank(), axis.line=element_line(size=.5),axis.ticks=element_line(size=.5), plot.title=element_text(face="bold", size=18))+
    geom_shape(data = hulls, alpha = .4, linetype="blank", aes(fill = as.factor(cluster)), 
-              expand = unit(.01, "npc"), radius = unit(.01, "npc"),
+              expand = unit(.03, "npc"), radius = unit(.03, "npc"),
               show.legend = F)+
     labs(caption=paste("Distances represent measurement non-invariance"))
  
