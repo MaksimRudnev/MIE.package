@@ -486,7 +486,12 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
   
    # library(ggplot2); library(ggrepel)
     requireNamespace("ggplot2")
+    requireNamespace("ggforce")
     requireNamespace("ggrepel")
+    find_hull <- function(df) df[chull(df$dim1, df$dim2), ]
+    hulls <- plyr::ddply(d, "cluster", find_hull)
+    #rad.and.exp = 10*(max(unlist(hulls[, 1:2]))-min(unlist(hulls[, 1:2])))/nrow(d)
+    
  g<-  ggplot(d, aes(dim1, dim2,  col=as.factor(cluster)))+
     geom_point( size=5, show.legend = F)+labs(x="", y="", col="")+
     geom_text_repel(aes(label=group), point.padding = unit(.3, "lines"), show.legend=F)+
@@ -494,7 +499,13 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
     coord_fixed()+
     scale_colour_hue(l = 50, c = 120)+
     theme(panel.grid = element_blank(), axis.line=element_line(size=.5),axis.ticks=element_line(size=.5), plot.title=element_text(face="bold", size=18))+
+   geom_shape(data = hulls, alpha = .4, linetype="blank", aes(fill = as.factor(cluster)), 
+              expand = unit(.01, "npc"), radius = unit(.01, "npc"),
+              show.legend = F)+
     labs(caption=paste("Distances represent measurement non-invariance"))
+ 
+
+ 
  
  
  # Add the circle
@@ -537,7 +548,7 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
 #' @details The function extracts a given fit indeces from pairwise fitted MGCFAs, and uses cutoff of .01 to identify edges between groups (nodes), so that the groups for whom  invariance is supported, are connected on the plot. The results are plotted using `igraph` package and clustered with `cluster_label_prop` method.
 #' @seealso cluster_label_prop
 #' @export         
-plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL) {
+plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = FALSE) {
   
   
   #abs.thrshld <- switch(fit.index, cfi=function(x) `>`(x, .90), rmsea = function(x) `<`(x, .05))
@@ -553,18 +564,51 @@ plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL) {
   }
   
   mtrx <- measures$detailed[[fit.index]]
-  mtrx.df <- data.frame(
-    i = as.numeric(gsub("^.*_", "",  rownames(mtrx))), 
-    j = as.numeric(gsub("_.*$", "",  rownames(mtrx))),
-    # absolute
-    #tie = abs.thrshld(unname(mtrx[,2]))
-    
-    # incremental
-    tie = thrshld(unname(mtrx[,"fit.decrease"]))
-  )
+  # mtrx.df <- data.frame(
+  #   i = gsub("^.*_", "",  rownames(mtrx)), 
+  #   j = gsub("_.*$", "",  rownames(mtrx)),
+  #   # absolute
+  #   #tie = abs.thrshld(unname(mtrx[,2]))
+  #   
+  #   # incremental
+  #   tie = thrshld(unname(mtrx[,"fit.decrease"]))
+  # )
   
-  clp <- igraph::cluster_label_prop(graph_from_edgelist(as.matrix(mtrx.df[mtrx.df$tie,-3]), directed = F))
-  net <- igraph::graph_from_edgelist(as.matrix(mtrx.df[mtrx.df$tie,-3]), directed = F)
+  dist1 <- reshape2::dcast(rbind( cbind(get_pairs(measures$bunch), measures$bunch[fit.index,]),
+                                  cbind(`colnames<-`(get_pairs(measures$bunch)[,2:1], c("V1", "V2")), measures$bunch[fit.index,])
+  ), V2 ~ V1, value.var = "measures$bunch[fit.index, ]")
+  row.names(dist1)<- dist1$V2
+  dist1$V2 <- NULL
+  dist1<-as.matrix(dist1)
+  dist2<-thrshld(dist1)*1 
+  #diag(dist1)<-rep(0, nrow(dist1))
+ 
+  if(!weighted) {
+  net <- igraph::graph_from_adjacency_matrix(dist2, diag = F, mode = "lower", weighted = NULL)
+  clp <- igraph::cluster_label_prop(net)
   igraph:::plot.communities(clp, net)
+  
+  } else {
+  
+  dist3 <- dist1 
+  diag(dist1)<-0
+  dist1[!thrshld(dist1)] <-0
+  dist1[ thrshld(dist1)] <- 1/(dist1[thrshld(dist1)]+1)
+  
+  diag(dist2)<-0
+  dist1[dist2==1]<-1/(dist1[dist2==1]+1)
+  dist1[dist2==0]<-0
+  
+ 
+  net <- igraph::graph_from_adjacency_matrix(dist1, diag = F, mode = "lower", weighted = TRUE)
+  clp <- igraph::cluster_label_prop(net)
+  igraph:::plot.communities(clp, net, edge.color = "darkgrey")
+  
+  }
+  
+  
+  # clp <- igraph::cluster_label_prop(igraph::graph_from_edgelist(as.matrix(mtrx.df[mtrx.df$tie,-3]), directed = F))
+  # net <- igraph::graph_from_edgelist(as.matrix(mtrx.df[mtrx.df$tie,-3]), directed = F)
+  # igraph:::plot.communities(clp, net)
   
 }
