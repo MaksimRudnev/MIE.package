@@ -22,3 +22,6 @@ Computes distances and performs multidimensional scaling (two-dimensional projec
 \description{
 Plot distances using computed measures of distance
 }
+\seealso{
+\code{\link{plotCutoff}}
+}

@@ -428,6 +428,7 @@ return(out)
 #' @param drop Vector of group names to be dropped from the plot.
 #' 
 #' @return Computes distances and performs multidimensional scaling (two-dimensional projection). Returns ggplot-based plot. 
+#' @seealso \code{\link{plotCutoff}}
 #' @export
 plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop = NULL, dist.method = NULL) {
   pam1 = function(x, k){list(cluster = pam(x,k, diss = T, cluster.only=TRUE))}
@@ -448,14 +449,13 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
       if(!is.null(drop)) dist1 <- dist1[!rownames(dist1) %in% drop, !(colnames(dist1) %in% drop) ]
       
       # new line below converting raw fit measures to distances with varying method
-      dist2 <- dist(dist1, method = ifelse(is.null(dist.method), "maximum", dist.method   ))
+      dist2 <- stats::dist(dist1, method = ifelse(is.null(dist.method), "maximum", dist.method   ))
       
       if(n.clusters == "auto") {
+
       
-      library(cluster)
-      
-      gskmn = clusGap(as.matrix(dist2), FUN=pam1, K.max = attr(dist2, "Size")-1, B = 50, verbose = F)
-      n.clusters <- maxSE(f = gskmn$Tab[, "gap"], SE.f = gskmn$Tab[, "SE.sim"], method = "Tibs2001SEmax", SE.factor = 1) 
+      gskmn = cluster::clusGap(as.matrix(dist2), FUN=pam1, K.max = attr(dist2, "Size")-1, B = 50, verbose = F)
+      n.clusters <- cluster::maxSE(f = gskmn$Tab[, "gap"], SE.f = gskmn$Tab[, "SE.sim"], method = "Tibs2001SEmax", SE.factor = 1) 
       cat("\nOptimal number of clusters is ", n.clusters)
       }
       
@@ -471,15 +471,15 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
       # remove dropped groups
       if(!is.null(drop)) measures <- measures[!rownames(measures) %in% drop, ]
       
-      dist1 <- dist(measures, method = ifelse(is.null(dist.method), "euclidean", dist.method   ))
+      dist1 <- stats::dist(measures, 
+                           method = ifelse(is.null(dist.method), "euclidean", dist.method ))
       mds1 <- stats::cmdscale(dist1 * 1, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE)
       
       if(n.clusters == "auto") {
         
-      library(cluster)
-        
-        gskmn = clusGap(as.matrix(dist1), FUN=pam1, K.max = attr(dist1, "Size")-1, B = 50, verbose = F)
-        n.clusters <- maxSE(f = gskmn$Tab[, "gap"], SE.f = gskmn$Tab[, "SE.sim"], method = "Tibs2001SEmax", SE.factor = 1) 
+
+        gskmn = cluster::clusGap(as.matrix(dist1), FUN=pam1, K.max = attr(dist1, "Size")-1, B = 50, verbose = F)
+        n.clusters <- cluster::maxSE(f = gskmn$Tab[, "gap"], SE.f = gskmn$Tab[, "SE.sim"], method = "Tibs2001SEmax", SE.factor = 1) 
         cat("\nOptimal number of clusters is ", n.clusters)
       }
       
@@ -559,10 +559,9 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
 #' @param measures The result of `incrementalFit`.
 #' @param fit.index Index to be used to in representing measurement invariance distances. Only if the `measures` argument is an output of `incrementalFit`. Can be "cfi", "rmsea", or "srmr", because only for these indices the cutoffs were suggested by Chen (2007).
 #' @param drop Vector of group names to be dropped from the plot.
-#' @param weighted Logical. If weighted graph should be created.
+#' @param weighted Logical. If weighted graph should be created. See \code{\link[igraph]{graph_from_adjacency_matrix}} for details.
 #' 
-#' @details The function extracts a given fit indeces from pairwise fitted MGCFAs, and uses cutoff of .01 to identify edges between groups (nodes), so that the groups for whom  invariance is supported, are connected on the plot. The results are plotted using `igraph` package and clustered with `cluster_label_prop` method.
-#' @seealso \code{\link[igraph]{cluster_label_prop}}, \code{\link[igraph]{graph_from_adjacency_matrix}}
+#' @details The function extracts a given fit indeces from pairwise fitted MGCFAs, and uses cutoff of .01 to identify edges between groups (nodes), so that the groups for whom  invariance is supported, are connected on the plot. The results are plotted using \code{\link[igraph]{cluster_label_prop}}.
 #' @export         
 plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = FALSE, drop = NULL) {
   

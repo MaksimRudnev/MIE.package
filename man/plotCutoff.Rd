@@ -11,13 +11,14 @@ plotCutoff(measures, fit.index = "cfi", cutoff = NULL,
 \item{measures}{The result of `incrementalFit`.}
 
 \item{fit.index}{Index to be used to in representing measurement invariance distances. Only if the `measures` argument is an output of `incrementalFit`. Can be "cfi", "rmsea", or "srmr", because only for these indices the cutoffs were suggested by Chen (2007).}
+
+\item{weighted}{Logical. If weighted graph should be created. See \code{\link[igraph]{graph_from_adjacency_matrix}} for details.}
+
+\item{drop}{Vector of group names to be dropped from the plot.}
 }
 \description{
 Plots network based on pairwise fit indices reduced to Chen's cutoffs
 }
 \details{
-The function extracts a given fit indeces from pairwise fitted MGCFAs, and uses cutoff of .01 to identify edges between groups (nodes), so that the groups for whom  invariance is supported, are connected on the plot. The results are plotted using `igraph` package and clustered with `cluster_label_prop` method.
-}
-\seealso{
-cluster_label_prop
+The function extracts a given fit indeces from pairwise fitted MGCFAs, and uses cutoff of .01 to identify edges between groups (nodes), so that the groups for whom  invariance is supported, are connected on the plot. The results are plotted using \code{\link[igraph]{cluster_label_prop}}.
 }
