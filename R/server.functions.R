@@ -4,7 +4,6 @@
 #' 
 #' @param variable Grouping variable to find the set of all possible unique pairs of values.
 #' 
-#' @export
 pairs_of_groups <- function(variable) {
   as.data.frame(t(utils::combn(unique(as.character(variable)), 2)), stringsAsFactors = F)
 }
