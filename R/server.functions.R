@@ -221,7 +221,7 @@ MGCFAparameters <- function(model=NULL,
                                          names(se.t[,-1]) ))
         attr(parameters, "fit")<-fitmeasures(mod)
         attr(parameters, "se")<-fitmeasures(mod)
-        class(mod)<- "MGCFAparameters"
+        class(parameters)<- "MGCFAparameters"
         return(parameters)
       }
     }
@@ -275,7 +275,7 @@ computeCovariance <- function(data, group) {
     
   }
   
-  
+  tab <- t(tab)
   class(tab) <- "covariances"
   tab
   #New version
@@ -316,6 +316,7 @@ computeCorrelation <- function(data, group) {
     rownames(tab)<- apply(combn(names(data[,colnames(data)!=group]), 2), 2, paste, collapse="_")
     
   }
+  tab <- t(tab)
   class(tab) <- "correlations"
   tab
   
@@ -431,8 +432,8 @@ return(out)
 plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop = NULL, dist.method = NULL) {
   pam1 = function(x, k){list(cluster = pam(x,k, diss = T, cluster.only=TRUE))}
   
-  if(class(measures) == "covariances" | class(measures) == "correlations") measures <- t(measures)
-    
+  
+
     if(class(measures)=="incrementalFit") {
 
       dist1 <- reshape2::dcast(rbind( cbind(get_pairs(measures$bunch), measures$bunch[fit.index,]),
@@ -441,7 +442,11 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
       row.names(dist1)<- dist1$V2
       dist1$V2 <- NULL
       dist1<-as.matrix(dist1)
-      diag(dist1)<-rep(0, nrow(dist1)) 
+      diag(dist1)<-rep(0, nrow(dist1))
+      
+      # remove dropped groups
+      if(!is.null(drop)) dist1 <- dist1[!rownames(dist1) %in% drop, !(colnames(dist1) %in% drop) ]
+      
       # new line below converting raw fit measures to distances with varying method
       dist2 <- dist(dist1, method = ifelse(is.null(dist.method), "maximum", dist.method   ))
       
@@ -461,13 +466,17 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
       mds1 <- stats::cmdscale(dist2 * 1, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE)
       
       
-    } else {
+    } else if( any(class(measures) %in% c("covariances", "correlations", "MGCFAparameters")) ) {
+       
+      # remove dropped groups
+      if(!is.null(drop)) measures <- measures[!rownames(measures) %in% drop, ]
+      
       dist1 <- dist(measures, method = ifelse(is.null(dist.method), "euclidean", dist.method   ))
       mds1 <- stats::cmdscale(dist1 * 1, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE)
       
       if(n.clusters == "auto") {
         
-        library(cluster)
+      library(cluster)
         
         gskmn = clusGap(as.matrix(dist1), FUN=pam1, K.max = attr(dist1, "Size")-1, B = 50, verbose = F)
         n.clusters <- maxSE(f = gskmn$Tab[, "gap"], SE.f = gskmn$Tab[, "SE.sim"], method = "Tibs2001SEmax", SE.factor = 1) 
@@ -476,13 +485,17 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
       
       #clusters <- stats::kmeans(measures, n.clusters)$cluster
       clusters <- cluster::pam(dist1, diss =T, k = n.clusters)$clustering
+    } else {
+      
+      stop("This function can accept only objects of classes 'incrementalFit', 'MGCFAparameters', 'covariances', and 'correlations'. ")
+      
     }
     
     colnames(mds1) <- c("dim1", "dim2")
     d <- as.data.frame(mds1)
     d$group <- rownames(d)
     d$cluster <- clusters
-    if(!is.null(drop)) d <- d[!(d$group %in% drop), !(colnames(d) %in% drop) ]
+   
   
    # library(ggplot2); library(ggrepel)
     requireNamespace("ggplot2")
@@ -533,9 +546,9 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
    
    
 
- g
+ print(g)
  
- 
+ invisible( d[,3:4])
  
 }
 
@@ -545,11 +558,17 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
 #'  
 #' @param measures The result of `incrementalFit`.
 #' @param fit.index Index to be used to in representing measurement invariance distances. Only if the `measures` argument is an output of `incrementalFit`. Can be "cfi", "rmsea", or "srmr", because only for these indices the cutoffs were suggested by Chen (2007).
+#' @param drop Vector of group names to be dropped from the plot.
+#' @param weighted Logical. If weighted graph should be created.
+#' 
 #' @details The function extracts a given fit indeces from pairwise fitted MGCFAs, and uses cutoff of .01 to identify edges between groups (nodes), so that the groups for whom  invariance is supported, are connected on the plot. The results are plotted using `igraph` package and clustered with `cluster_label_prop` method.
-#' @seealso cluster_label_prop
+#' @seealso \code{\link[igraph]{cluster_label_prop}}, \code{\link[igraph]{graph_from_adjacency_matrix}}
 #' @export         
-plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = FALSE) {
+plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = FALSE, drop = NULL) {
   
+  
+  # remove dropped groups
+  if(!is.null(drop)) measures <- measures[!rownames(measures) %in% drop, ]
   
   #abs.thrshld <- switch(fit.index, cfi=function(x) `>`(x, .90), rmsea = function(x) `<`(x, .05))
   if(is.null(cutoff)) {
@@ -563,7 +582,7 @@ plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = FA
     thrshld <- function(x) `<`(x, cutoff)
   }
   
-  mtrx <- measures$detailed[[fit.index]]
+  # mtrx <- measures$detailed[[fit.index]]
   # mtrx.df <- data.frame(
   #   i = gsub("^.*_", "",  rownames(mtrx)), 
   #   j = gsub("_.*$", "",  rownames(mtrx)),
@@ -580,12 +599,17 @@ plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = FA
   row.names(dist1)<- dist1$V2
   dist1$V2 <- NULL
   dist1<-as.matrix(dist1)
+  # remove dropped groups
+  if(!is.null(drop)) dist1 <- dist1[!rownames(dist1) %in% drop, !(colnames(dist1) %in% drop) ]
+  
   dist2<-thrshld(dist1)*1 
   #diag(dist1)<-rep(0, nrow(dist1))
  
   if(!weighted) {
+  
   net <- igraph::graph_from_adjacency_matrix(dist2, diag = F, mode = "lower", weighted = NULL)
   clp <- igraph::cluster_label_prop(net)
+  set.seed(123)
   igraph:::plot.communities(clp, net)
   
   } else {
@@ -599,16 +623,18 @@ plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = FA
   dist1[dist2==1]<-1/(dist1[dist2==1]+1)
   dist1[dist2==0]<-0
   
- 
+  
   net <- igraph::graph_from_adjacency_matrix(dist1, diag = F, mode = "lower", weighted = TRUE)
   clp <- igraph::cluster_label_prop(net)
+  set.seed(123)
   igraph:::plot.communities(clp, net, edge.color = "darkgrey")
   
   }
   
-  
+  invisible(clp)
   # clp <- igraph::cluster_label_prop(igraph::graph_from_edgelist(as.matrix(mtrx.df[mtrx.df$tie,-3]), directed = F))
   # net <- igraph::graph_from_edgelist(as.matrix(mtrx.df[mtrx.df$tie,-3]), directed = F)
   # igraph:::plot.communities(clp, net)
   
 }
+

@@ -5,7 +5,7 @@
 \title{Plots network based on pairwise fit indices reduced to Chen's cutoffs}
 \usage{
 plotCutoff(measures, fit.index = "cfi", cutoff = NULL,
-  weighted = FALSE)
+  weighted = FALSE, drop = NULL)
 }
 \arguments{
 \item{measures}{The result of `incrementalFit`.}
