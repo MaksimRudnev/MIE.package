@@ -1,5 +1,51 @@
 ## Global functions #####
 
+#' Test for measureent invariance in three steps
+#' @description Computes configural, metric, and scala invariance models and compares them.
+#' 
+#' @param ... Formula, group, and all the other eligible arguments of `lavaan::cfa` function.
+#'
+#' @export
+globalMI <- function(...) {
+  
+  r.conf<-lavaan::cfa(...)
+  r.metric<-lavaan::cfa(..., group.equal = "loadings")
+  r.scalar<-lavaan::cfa(..., group.equal = c("loadings", "intercepts"))
+  
+  #print(r.conf@call[-3])
+  
+  out <- lavaan::lavTestLRT(r.conf, r.metric, r.scalar, model.names = c("Configural", "Metric", "Scalar"))
+  #out <- out[,names(out)[c(4, 1, 5, 6)]]
+  out2<-t(sapply(list(r.conf, r.metric, r.scalar),   fitmeasures)[c("cfi", "tli", "rmsea", "srmr"),])
+  out2.2 <- apply(out2, 2, function(x) (c(NA, x[2]-x[1], x[3]-x[2]  )))
+  colnames(out2.2)<- paste("diff.", toupper(colnames(out2.2)), sep="")
+  out2.3 <- t(Reduce("rbind", lapply(1:ncol(out2), function(x) rbind(out2[,x], out2.2[,x]))))
+  colnames(out2.3)<-toupper(as.vector(sapply(1:length(colnames(out2)), function(i) c(colnames(out2)[i], colnames(out2.2)[i]) )))
+  rownames(out2.3)<-c("Configural", "Metric", "Scalar")
+  print(out)
+  cat("\n")
+  print(round(out2.3, 3), digits=3, row.names = TRUE, na.print = "" )
+}
+
+
+#' Run Shiny MIE application
+#' 
+#' @param data Data.frame containing only the variables to be used in calculations. May contain only numeric variables. If `group` argument is not specified, the group variable should be the first in the data.
+#' @param model Character, lavaan formula.
+#' @param group Character, name of the variable in data.
+#' 
+#' @export
+runMIE <- function(model = NULL, data = NULL,  group = NULL, verbose = FALSE) {
+  
+  .GlobalEnv$.data <- data
+  .GlobalEnv$.model <- model
+  .GlobalEnv$.group <- group
+  .GlobalEnv$.verbose <- verbose
+  on.exit(rm(list=c(".data", ".model", ".group"), envir=.GlobalEnv))                       
+  shiny::runApp(appDir = system.file("application", package = "MIE"))
+  #shiny::runApp(appDir = "inst/application")
+}
+
 #' Returns all possible pairs of countries without duplicates based on variable 
 #' 
 #' @param variable Grouping variable to find the set of all possible unique pairs of values.
@@ -33,7 +79,7 @@ pairwiseFit <- function(model,
                         
 ) {
   
-  if(is.null(pairs.of.groups)) pairs.of.groups <- pairs_of_groups(data[[group]])
+  if(is.null(pairs.of.groups)) pairs.of.groups <- MIE:::pairs_of_groups(data[[group]])
   data=data[,c(group, colnames(data)[colnames(data)!=group])]
   
   colnames(data)[1]<-"cntry"
@@ -92,6 +138,9 @@ pairwiseFit <- function(model,
               paste(apply(pairs.of.groups[non.positive,], 1, paste, collapse=" & "), collapse=",\n"), paste(sum(non.positive),  "models (paired groups subsamples)."))
       
        }
+    
+    colnames(mod)<-apply(pairs.of.groups, 1, paste, collapse="_")
+    attr(mod, "model.formula") <- model
     return(mod)
     
   }
@@ -100,12 +149,10 @@ pairwiseFit <- function(model,
   withProgress(message = message, value = 0, {   #Create progress bar
     mod <- runPairwiseModels()
     mod
-    print(mod)
   }) #close progress bar 
     } else {
       pb <- utils::txtProgressBar(title="Fitting pairwise models", style=3)
       mod <- runPairwiseModels()
-      colnames(mod)<-apply(pairs.of.groups, 1, paste, collapse="_")
       mod
     }
 }
@@ -220,7 +267,7 @@ MGCFAparameters <- function(model=NULL,
                                          names(se.t[,-1]) ))
         attr(parameters, "fit")<-fitmeasures(mod)
         attr(parameters, "se")<-fitmeasures(mod)
-        class(parameters)<- "MGCFAparameters"
+        class(parameters)<- c("MGCFAparameters")
         return(parameters)
       }
     }
@@ -251,7 +298,7 @@ MGCFAparameters <- function(model=NULL,
 computeCovariance <- function(data, group) {
   
   #    if(input$weights=="noweight") {
-  message("Computing covariance matrix")
+  # message("Computing covariance matrix")
   
   #Split dataset and compute variance-covariance for each group separately
   if(is.null(group)) {
@@ -325,62 +372,7 @@ computeCorrelation <- function(data, group) {
   #)
 }
 
-#' Test for measureent invariance in three steps
-#' @description Computes configural, metric, and scala invariance models and compares them.
-#' 
-#' @param ... Formula, group, and all the other eligible arguments of `lavaan::cfa` function.
-#'
-#' @export
-globalMI <- function(...) {
-  
-  r.conf<-lavaan::cfa(...)
-  r.metric<-lavaan::cfa(..., group.equal = "loadings")
-  r.scalar<-lavaan::cfa(..., group.equal = c("loadings", "intercepts"))
-  
-  #print(r.conf@call[-3])
-  
-  out <- lavaan::lavTestLRT(r.conf, r.metric, r.scalar, model.names = c("Configural", "Metric", "Scalar"))
-  #out <- out[,names(out)[c(4, 1, 5, 6)]]
-  out2<-t(sapply(list(r.conf, r.metric, r.scalar),   fitmeasures)[c("cfi", "tli", "rmsea", "srmr"),])
-  out2.2 <- apply(out2, 2, function(x) (c(NA, x[2]-x[1], x[3]-x[2]  )))
-  colnames(out2.2)<- paste("diff.", toupper(colnames(out2.2)), sep="")
-  out2.3 <- t(Reduce("rbind", lapply(1:ncol(out2), function(x) rbind(out2[,x], out2.2[,x]))))
-  colnames(out2.3)<-toupper(as.vector(sapply(1:length(colnames(out2)), function(i) c(colnames(out2)[i], colnames(out2.2)[i]) )))
-  rownames(out2.3)<-c("Configural", "Metric", "Scalar")
-  print(out)
-  cat("\n")
-  print(round(out2.3, 3), digits=3, row.names = TRUE, na.print = "" )
-}
 
-
-#' Run Shiny MIE application
-#' 
-#' @param data Data.frame containing only the variables to be used in calculations. May contain only numeric variables. If `group` argument is not specified, the group variable should be the first in the data.
-#' @param model Character, lavaan formula.
-#' @param group Character, name of the variable in data.
-#' 
-#' @export
-runMIE <- function(model = NULL, data = NULL,  group = NULL) {
-
-  .GlobalEnv$.data <- data
-  .GlobalEnv$.model <- model
-  .GlobalEnv$.group <- group
-  on.exit(rm(list=c(".data", ".model", ".group"), envir=.GlobalEnv))                       
-  shiny::runApp(appDir = system.file("application", package = "MIE"))
-  #shiny::runApp(appDir = "inst/application")
-}
-
-# foo <- function(x) {   
-#   e <- environment() # current environment
-#   p <- parent.env(e)
-#   cat(paste(ls(envir=parent.frame(n=1)), collapse="\n"))
-#   
-#   }
-# 
-# runMIE(.data = ess_trimmed)
-
-# foo <- function(.data) { obj.name = deparse(substitute(.data));  get(obj.name, envir = .GlobalEnv)  }
-# foo(.data = ess_trimmed)
 
 #' Run pairwise models and compute decrease in fit
 #'
@@ -390,6 +382,8 @@ runMIE <- function(model = NULL, data = NULL,  group = NULL) {
 #'
 #'@export
 incrementalFit <- function(..., level="metric") {
+  
+  
   if(level=="metric") {
   #fit.decrease <- abs(pairwiseFit(..., constraints = c("")) - pairwiseFit(..., constraints = c("loadings")))
     cat("Fitting configural models\n")
@@ -397,8 +391,8 @@ incrementalFit <- function(..., level="metric") {
     cat("\nFitting metric models\n")
   metric = pairwiseFit(..., constraints = c("loadings"))
   fit.decrease <- abs(configural - metric)
-  otpt<-lapply(rownames(fit.decrease), function(f) cbind(configural=configural[f,], metric=metric[f,], fit.decrease=fit.decrease[f, ])  )
-  names(otpt)<-rownames(fit.decrease)
+  detailed<-lapply(rownames(fit.decrease), function(f) cbind(configural=configural[f,], metric=metric[f,], fit.decrease=fit.decrease[f, ])  )
+  names(detailed)<-rownames(fit.decrease)
   
   } else  if(level=="scalar") {
       cat("Fitting metric models\n")
@@ -406,13 +400,13 @@ incrementalFit <- function(..., level="metric") {
       cat("\nFitting scalar models\n")
     scalar = pairwiseFit(..., constraints = c("loadings", "intercepts"))
     fit.decrease <- abs(metric - scalar)
-    otpt<-lapply(rownames(fit.decrease), function(f) cbind(metric=metric[f,], scalar=scalar[f,], fit.decrease=fit.decrease[f, ])  )
-    names(otpt)<-rownames(fit.decrease)
+    detailed<-lapply(rownames(fit.decrease), function(f) cbind(metric=metric[f,], scalar=scalar[f,], fit.decrease=fit.decrease[f, ])  )
+    names(detailed)<-rownames(fit.decrease)
   }
   
   
- out <- list(detailed=otpt, bunch=fit.decrease)
- 
+ out <- list(detailed=detailed, bunch=fit.decrease)
+
  class(out)<-c("incrementalFit")
   
 return(out)
@@ -429,8 +423,8 @@ return(out)
 #' @return Computes distances and performs multidimensional scaling (two-dimensional projection). Returns ggplot-based plot. 
 #' @seealso \code{\link{plotCutoff}}
 #' @export
-plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop = NULL, dist.method = NULL) {
-  pam1 = function(x, k){list(cluster = pam(x,k, diss = T, cluster.only=TRUE))}
+plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop = NULL, dist.method = NULL, shiny = FALSE) {
+  pam1 = function(x, k){list(cluster = cluster::pam(x,k, diss = T, cluster.only=TRUE))}
   
   
 
@@ -452,10 +446,14 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
       
       if(n.clusters == "auto") {
 
-      
+      set.seed(1234)
       gskmn = cluster::clusGap(as.matrix(dist2), FUN=pam1, K.max = attr(dist2, "Size")-1, B = 50, verbose = F)
       n.clusters <- cluster::maxSE(f = gskmn$Tab[, "gap"], SE.f = gskmn$Tab[, "SE.sim"], method = "Tibs2001SEmax", SE.factor = 1) 
-      cat("\nOptimal number of clusters is ", n.clusters)
+        if(shiny) {
+          #updateSliderInput(session, "nclusters", max = groups - 1, value = n.clusters)
+        } else {
+          cat("\nOptimal number of clusters is ", n.clusters)
+        }
       }
       
         
@@ -476,10 +474,15 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
       
       if(n.clusters == "auto") {
         
-
+        set.seed(1234)
         gskmn = cluster::clusGap(as.matrix(dist1), FUN=pam1, K.max = attr(dist1, "Size")-1, B = 50, verbose = F)
         n.clusters <- cluster::maxSE(f = gskmn$Tab[, "gap"], SE.f = gskmn$Tab[, "SE.sim"], method = "Tibs2001SEmax", SE.factor = 1) 
-        cat("\nOptimal number of clusters is ", n.clusters)
+        
+        if(shiny) {
+          #shiny::updateSliderInput(session, "nclusters", value = n.clusters)
+        } else {
+          cat("\nOptimal number of clusters is ", n.clusters)
+        }
       }
       
       #clusters <- stats::kmeans(measures, n.clusters)$cluster
@@ -512,8 +515,8 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
     scale_colour_hue(l = 50, c = 120)+
     theme(panel.grid = element_blank(), axis.line=element_line(size=.5),axis.ticks=element_line(size=.5), plot.title=element_text(face="bold", size=18))+
    geom_shape(data = hulls, alpha = .4, linetype="blank", aes(fill = as.factor(cluster)), 
-              expand = unit(.03, "npc"), radius = unit(.03, "npc"),
-              show.legend = F)+
+               expand = unit(10, "points"), radius = unit(10, "points"),
+               show.legend = F)+
     labs(caption=paste("Distances represent measurement non-invariance"))
  
 
@@ -545,9 +548,9 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
    
    
 
- print(g)
+g
  
- invisible( d[,3:4])
+ #invisible( d[,3:4])
  
 }
 
@@ -566,7 +569,7 @@ plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = FA
   
   
   # remove dropped groups
-  if(!is.null(drop)) measures <- measures[!rownames(measures) %in% drop, ]
+  #if(!is.null(drop)) measures <- measures[!rownames(measures) %in% drop, ]
   
   #abs.thrshld <- switch(fit.index, cfi=function(x) `>`(x, .90), rmsea = function(x) `<`(x, .05))
   if(is.null(cutoff)) {
@@ -601,6 +604,7 @@ plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = FA
   if(!is.null(drop)) dist1 <- dist1[!rownames(dist1) %in% drop, !(colnames(dist1) %in% drop) ]
   
   dist2<-thrshld(dist1)*1 
+  dist1[!thrshld(dist1)] <- 0 
   #diag(dist1)<-rep(0, nrow(dist1))
  
   if(!weighted) {
@@ -608,8 +612,9 @@ plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = FA
   net <- igraph::graph_from_adjacency_matrix(dist2, diag = F, mode = "lower", weighted = NULL)
   clp <- igraph::cluster_label_prop(net)
   set.seed(123)
-  igraph:::plot.communities(clp, net)
-  
+  igraph:::plot.communities(clp, net, layout = layout_with_fr)
+    
+
   } else {
   
   dist3 <- dist1 
@@ -625,14 +630,23 @@ plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = FA
   net <- igraph::graph_from_adjacency_matrix(dist1, diag = F, mode = "lower", weighted = TRUE)
   clp <- igraph::cluster_label_prop(net)
   set.seed(123)
-  igraph:::plot.communities(clp, net, edge.color = "darkgrey")
+  igraph:::plot.communities(clp, net, edge.color = "darkgrey", layout = layout_with_fr)
+  set.seed(123)
+   coords <- layout_with_fr(net, dim = 2, niter = 500)
+   colnames(coords)<- c("x", "y")
   
   }
   
-  invisible(clp)
+  invisible(coords)
   # clp <- igraph::cluster_label_prop(igraph::graph_from_edgelist(as.matrix(mtrx.df[mtrx.df$tie,-3]), directed = F))
   # net <- igraph::graph_from_edgelist(as.matrix(mtrx.df[mtrx.df$tie,-3]), directed = F)
   # igraph:::plot.communities(clp, net)
   
 }
+
+
+# igraph:::plot.communities(clp, net, edge.color = "darkgrey", layout = layout_with_fr)
+# p <- recordPlot()
+# plot.new() ## clean up device
+# p
 

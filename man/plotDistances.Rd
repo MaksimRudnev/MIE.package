@@ -5,7 +5,7 @@
 \title{Plot distances using computed measures of distance}
 \usage{
 plotDistances(measures, n.clusters = "auto", fit.index = "cfi",
-  drop = NULL, dist.method = NULL)
+  drop = NULL, dist.method = NULL, shiny = FALSE)
 }
 \arguments{
 \item{measures}{Can be result of `MGCFAparameters`, `computeCovariance`, `computeCorrelation`, `incrementalFit`.}

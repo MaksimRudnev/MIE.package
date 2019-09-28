@@ -4,7 +4,7 @@
 \alias{runMIE}
 \title{Run Shiny MIE application}
 \usage{
-runMIE(model = NULL, data = NULL, group = NULL)
+runMIE(model = NULL, data = NULL, group = NULL, verbose = FALSE)
 }
 \arguments{
 \item{model}{Character, lavaan formula.}

@@ -4,6 +4,8 @@
 #dat<-simMGCFA
 library(shiny)
 library(markdown)
+library(shinyWidgets)
+
 # Define UI for application that draws a histogram
 shinyUI(
   fluidPage(
@@ -94,7 +96,7 @@ shinyUI(
                                "GFI" = "gfi", "rmsea.ci.upper" = "rmsea.ci.upper"))
        ),
       hr(),
-      checkboxInput("semTools", "Run global invariance tests for a given subset of groups")
+      checkboxInput("globalMI", "Run global invariance tests for a given subset of groups")
       
       #selectInput("rounds", 
       #             "Choose the ESS round",
@@ -123,7 +125,7 @@ shinyUI(
        uiOutput("forceFitLink"),
        hr(),
        fluidRow( #tags$style(".well {background-color:#f7ccc;}"),
-         column(6,
+         column(4,
                 sliderInput("nclusters",
                             "Number of clusters:",
                             min = 1,
@@ -131,11 +133,17 @@ shinyUI(
                             value = 2,
                             step=1, animate = F, round=T, ticks=F)
        ),
-         column(6,
+       
+         column(4,        conditionalPanel(
+           condition = "input.measure == 'fitincrement.metric'|input.measure == 'fitincrement.scalar'",
+           materialSwitch(inputId="netSwitch", label = "Use cutoffs?", value = FALSE, 
+                          #onLabel = "Distances", offLabel = "Cutoffs"
+           ))),
+         column(4,
                 uiOutput("excluded")
        )),
        
-       #strong("semTools::measurementInvariance output"),
+       
        uiOutput("verbatimText"),
        
        hr(),
