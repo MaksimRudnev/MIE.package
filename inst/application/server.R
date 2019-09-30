@@ -78,10 +78,11 @@ if(.verbose) cli::cat_rule("Begin log")
   # Reading in the data from globalEnv ####
 # reactive({ 
   if(!is.null(.data) & !is.null(.group) ) { 
+    if(any(class(.data)=="tbl")) .data <- as.data.frame.list(unclass(.data))
     local.data <- .data[, c(colnames(.data)[colnames(.data) == .group],
                        colnames(.data)[colnames(.data) != .group])]
     verb(colnames(local.data))
-    colnames(local.data)[1] <- "cntry"
+    colnames(local.data)[1] <- "grp"
     verb("changed the data order")
   } else if (!is.null(.data) & is.null(.group) ) {
     local.data <- .data
@@ -97,10 +98,10 @@ if(.verbose) cli::cat_rule("Begin log")
   
   if(!is.null(.data)) {
      dt$dat = local.data
-  #print("unique(dt$dat$cntry)"); print(unique(dt$dat$cntry))
-  vals$keeprows = unique(isolate(dt$dat$cntry))
+  #print("unique(dt$dat$grp)"); print(unique(dt$dat$grp))
+  vals$keeprows = unique(isolate(dt$dat$grp))
   vals$excluded <- NULL
-  modelStorage$covariance <- t(computeCovariance(isolate(dt$dat), group = "cntry"))
+  modelStorage$covariance <- t(computeCovariance(isolate(dt$dat), group = "grp"))
   
   showNotification("Using data from the R object.", type="message", duration=10)
   }
@@ -115,12 +116,12 @@ if(.verbose) cli::cat_rule("Begin log")
   person=~ ipcrtiv +impfree +impfun +ipgdtim +impdiff +ipadvnt+ imprich +iprspot +ipshabt +ipsuces;
     social=~ impenv +ipeqopt +ipudrst +iplylfr +iphlppl +impsafe +ipstrgv +ipfrule +ipbhprp +ipmodst +imptrad;"
     updateCheckboxInput(session, "use.formula", value=TRUE)
-    #print("unique(dt$dat$cntry)"); print(unique(dt$dat$cntry))
-    vals$keeprows = unique(dt$dat$cntry)
+    #print("unique(dt$dat$grp)"); print(unique(dt$dat$grp))
+    vals$keeprows = unique(dt$dat$grp)
     vals$excluded <- NULL
     print(paste("Button 'play with fake data' has been used."))
     
-    modelStorage$covariance <- computeCovariance(dt$dat, group = "cntry")
+    modelStorage$covariance <- computeCovariance(dt$dat, group = "grp")
     
     showNotification("Using fake data for testing the tool.", type="warning", duration=10)
   })
@@ -143,13 +144,13 @@ if(.verbose) cli::cat_rule("Begin log")
     #Read the data
     showNotification("Reading data...")
     d<-read.csv(input$file1$datapath, header = T)
-    names(d)[1]<-c("cntry")
-    d$cntry<-as.factor(d$cntry) # Hmm...
+    names(d)[1]<-c("grp")
+    d$grp<-as.factor(d$grp) # Hmm...
     dt$dat <- d
     print(paste(colnames(d), collapse="; "))
     rm(d)
     #Set subsets to NULL
-        vals$keeprows <- unique(dt$dat$cntry)
+        vals$keeprows <- unique(dt$dat$grp)
         vals$excluded = NULL
         
     #Set all model results (beside covariance) to NULL
@@ -163,7 +164,7 @@ if(.verbose) cli::cat_rule("Begin log")
     
     #Compute covariance matrix   
     #Split dataset and compute variance-covariance for each group separately
-        modelStorage$covariance<-computeCovariance(isolate(dt$dat), group = "cntry")
+        modelStorage$covariance<-computeCovariance(isolate(dt$dat), group = "grp")
         
         #print( str(modelStorage$covariance))
        # print(head(dt$dat))
@@ -179,8 +180,8 @@ if(.verbose) cli::cat_rule("Begin log")
     print(paste(" selectedData() subset the raw data for", paste(vals$keeprows, collapse=",")))
       dat<-dt$dat
 
-      dat<-dat[dat$cntry %in% vals$keeprows, ] 
-      if(is.factor(dat$cntry)) dat$cntry <- droplevels(dat$cntry) 
+      dat<-dat[dat$grp %in% vals$keeprows, ] 
+      if(is.factor(dat$grp)) dat$grp <- droplevels(dat$grp) 
    
     dat
     
@@ -192,11 +193,11 @@ subsettingMatrices <- reactive ({
   
   if(input$measure=="covariance") {
     
-  computeCovariance(data  = dt$dat, group = "cntry")
+  computeCovariance(data  = dt$dat, group = "grp")
   
     } else if (input$measure=="correlation"){
     
-  computeCorrelation(data  = dt$dat, group = "cntry")
+  computeCorrelation(data  = dt$dat, group = "grp")
 
       ######### Fitting conf vs metric pairwise -----------------------------------------------------    
     } else if (input$measure=="fitincrement.metric") { 
@@ -243,7 +244,7 @@ subsettingMatrices <- reactive ({
       verb("Computing missing pairs of conf models");
       conf.pairwise<- pairwiseFit(model = dt$model,
                                   data  = dt$dat, 
-                                  group = "cntry",
+                                  group = "grp",
                                   constraints = c(""),
                                   pairs.of.groups = pairs.c, 
                                   message = 'Fitting pairwise configural models by lavaan',
@@ -311,7 +312,7 @@ subsettingMatrices <- reactive ({
         
         metric.pairwise<- pairwiseFit(model = dt$model,
                                     data  = dt$dat, 
-                                    group = "cntry",
+                                    group = "grp",
                                     constraints = c("loadings"),
                                     pairs.of.groups = pairs.c, 
                                     message = 'Fitting pairwise metric models by lavaan',
@@ -408,7 +409,7 @@ subsettingMatrices <- reactive ({
       
       metric.pairwise<- pairwiseFit(model = dt$model,
                                     data  = dt$dat, 
-                                    group = "cntry",
+                                    group = "grp",
                                     constraints = c("loadings"),
                                     pairs.of.groups = pairs.c, 
                                     message = 'Fitting pairwise metric models by lavaan',
@@ -474,7 +475,7 @@ subsettingMatrices <- reactive ({
       verb("Computing missing pairs of scalar models");
       scalar.pairwise<- pairwiseFit(model = dt$model,
                                   data  = dt$dat, 
-                                  group = "cntry",
+                                  group = "grp",
                                   constraints = c("loadings", "intercepts"),
                                   pairs.of.groups = pairs.c, 
                                   message = 'Fitting pairwise scalar models by lavaan',
@@ -716,10 +717,10 @@ group.partial = c('person =~ impfree') ",
       incProgress(1/2, detail = "")
 
       d=selectedData()
-      cfa.argument.list <- c(dt$extra.options, list(model=dt$model, data=d, group="cntry"))
+      cfa.argument.list <- c(dt$extra.options, list(model=dt$model, data=d, group="grp"))
       r<-capture.output(do.call("globalMI",  cfa.argument.list, quote = FALSE))
       
-      # r<-capture.output(globalMI(dt$model, data=d, group="cntry", dt$extra.options))
+      # r<-capture.output(globalMI(dt$model, data=d, group="grp", dt$extra.options))
 
       paste("Global MI output:","\n",
             paste(r, collapse="\n"))
@@ -813,7 +814,7 @@ group.partial = c('person =~ impfree') ",
   })
   
   observeEvent(input$resetExcluded, {
-    vals$keeprows<-unique(dt$dat$cntry)   
+    vals$keeprows<-unique(dt$dat$grp)   
     vals$excluded<-NULL
   })
   
@@ -880,10 +881,12 @@ if(!input$netSwitch) {
   
 } else {
   
-  dt$plot <- plotCutoff(d, 
+  g<-  plotCutoff(d, 
              fit.index = input$fitincrement.chosen, 
              drop = vals$excluded,
              weighted = T)
+  dt$plot <- g$data
+  g+ggtitle(table.header())
   
 }
 
@@ -995,7 +998,8 @@ if(!input$netSwitch) {
 
 
   output$plot<- renderUI({  plotOutput("distPlot", height=paste(plot.size(), "px", sep=""),
-             click = if(input$netSwitch) NULL else "plot1_click"
+             #click = if(input$netSwitch) NULL else "plot1_click"
+             click = "plot1_click"
              )#, brush = brushOpts(id = "plot1_brush")
   })
   

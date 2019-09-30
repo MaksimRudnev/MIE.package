@@ -565,7 +565,7 @@ g
 #' 
 #' @details The function extracts a given fit indeces from pairwise fitted MGCFAs, and uses cutoff of .01 to identify edges between groups (nodes), so that the groups for whom  invariance is supported, are connected on the plot. The results are plotted using \code{\link[igraph]{cluster_label_prop}}.
 #' @export         
-plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = FALSE, drop = NULL) {
+plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = TRUE, drop = NULL) {
   
   
   # remove dropped groups
@@ -607,37 +607,69 @@ plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = FA
   dist1[!thrshld(dist1)] <- 0 
   #diag(dist1)<-rep(0, nrow(dist1))
  
-  if(!weighted) {
+  if(weighted) {
   
-  net <- igraph::graph_from_adjacency_matrix(dist2, diag = F, mode = "lower", weighted = NULL)
-  clp <- igraph::cluster_label_prop(net)
-  set.seed(123)
-  igraph:::plot.communities(clp, net, layout = layout_with_fr)
-    
+    dist3 <- dist1
+    diag(dist1)<-0
+    dist1[!thrshld(dist1)] <-0
+    dist1[ thrshld(dist1)] <- 1/(dist1[thrshld(dist1)]+1)
 
+    diag(dist2)<-0
+    dist1[dist2==1]<-1/(dist1[dist2==1]*100+1)
+    dist1[dist2==0]<-0
+    # 
+    
+    net <- igraph::graph_from_adjacency_matrix(dist1, diag = F, mode = "lower", weighted = TRUE)
   } else {
-  
-  dist3 <- dist1 
-  diag(dist1)<-0
-  dist1[!thrshld(dist1)] <-0
-  dist1[ thrshld(dist1)] <- 1/(dist1[thrshld(dist1)]+1)
-  
-  diag(dist2)<-0
-  dist1[dist2==1]<-1/(dist1[dist2==1]+1)
-  dist1[dist2==0]<-0
-  
-  
-  net <- igraph::graph_from_adjacency_matrix(dist1, diag = F, mode = "lower", weighted = TRUE)
-  clp <- igraph::cluster_label_prop(net)
-  set.seed(123)
-  igraph:::plot.communities(clp, net, edge.color = "darkgrey", layout = layout_with_fr)
-  set.seed(123)
-   coords <- layout_with_fr(net, dim = 2, niter = 500)
-   colnames(coords)<- c("x", "y")
-  
+    
+    dist1 <- dist2
+    net <- igraph::graph_from_adjacency_matrix(dist2, diag = F, mode = "lower", weighted = NULL)
   }
   
-  invisible(coords)
+
+  
+  
+  
+  clp <- igraph::cluster_label_prop(net)
+  # set.seed(123)
+  # igraph:::plot.communities(clp, net, edge.color = "darkgrey", layout = layout_with_fr)
+  set.seed(123)
+   coords <- layout_with_fr(net, dim = 2, niter = 500)
+   colnames(coords)<- c("dim1", "dim2")
+   coords<- as.data.frame.matrix(coords)
+   coords$group <- rownames(dist1)
+   clusters <- Reduce("rbind",  lapply(1:length(clp), function(x) data.frame( 
+     group = clp[[x]], 
+     cluster = rep(x, length(clp[[x]])), stringsAsFactors = F)))
+    coords <- merge(coords, clusters, by = "group")
+    find_hull <- function(df) df[chull(df$dim1, df$dim2), ]
+    hulls <- plyr::ddply(coords, "cluster", find_hull)
+    
+    d1 <- melt(dist1)
+    d1 <- d1[d1$value!=0,]
+    d2 <- merge(d1, coords, by.x = "Var1", by.y = "group", all.x = T)
+    d3 <- merge(d2, coords, by.x = "Var2", by.y = "group", all.x = T)
+    
+    requireNamespace("ggplot2")
+    requireNamespace("ggforce")
+
+    g<-  ggplot(coords, aes(dim1, dim2,  col=as.factor(cluster)))+
+      geom_segment(data = d3, aes(x = dim1.x, xend = dim1.y, y = dim2.x, yend = dim2.y), col = "black", alpha = .5)+
+      #geom_text_repel(aes(label=group), point.padding = unit(.3, "lines"), show.legend=F)+
+      
+      geom_shape(data = hulls, aes(fill = as.factor(cluster) ),
+                 alpha = ifelse(length(unique(coords$cluster))>1, .4, 0), linetype="blank",
+                 expand = unit(10, "points"), radius = unit(10, "points"),
+                 show.legend = F)+
+      geom_point( size=5, show.legend = F)+labs(x="", y="", col="")+
+      geom_label(aes(label=group), show.legend=F, alpha = 1)+
+      theme_void()+
+      coord_fixed()+
+      scale_colour_hue(l = 50, c = 120)+
+      theme(panel.grid = element_blank(), axis.line=element_line(size=.5),axis.ticks=element_line(size=.5), plot.title=element_text(face="bold", size=18))+
+      labs(caption=paste("Lines represent measurement invariance"))
+    
+g
   # clp <- igraph::cluster_label_prop(igraph::graph_from_edgelist(as.matrix(mtrx.df[mtrx.df$tie,-3]), directed = F))
   # net <- igraph::graph_from_edgelist(as.matrix(mtrx.df[mtrx.df$tie,-3]), directed = F)
   # igraph:::plot.communities(clp, net)

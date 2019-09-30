@@ -125,14 +125,14 @@ shinyUI(
        uiOutput("forceFitLink"),
        hr(),
        fluidRow( #tags$style(".well {background-color:#f7ccc;}"),
-         column(4,
-                sliderInput("nclusters",
-                            "Number of clusters:",
-                            min = 1,
-                            max = 10,
-                            value = 2,
-                            step=1, animate = F, round=T, ticks=F)
-       ),
+       #   column(4,
+       #          sliderInput("nclusters",
+       #                      "Number of clusters:",
+       #                      min = 1,
+       #                      max = 10,
+       #                      value = 2,
+       #                      step=1, animate = F, round=T, ticks=F)
+       # ),
        
          column(4,        conditionalPanel(
            condition = "input.measure == 'fitincrement.metric'|input.measure == 'fitincrement.scalar'",
