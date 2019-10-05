@@ -565,7 +565,7 @@ g
 #' 
 #' @details The function extracts a given fit indeces from pairwise fitted MGCFAs, and uses cutoff of .01 to identify edges between groups (nodes), so that the groups for whom  invariance is supported, are connected on the plot. The results are plotted using \code{\link[igraph]{cluster_label_prop}}.
 #' @export         
-plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = TRUE, drop = NULL) {
+plotCutoff <- function(measures, fit.index = NA, cutoff = NULL, weighted = TRUE, drop = NULL) {
   
   
   # remove dropped groups
@@ -645,7 +645,7 @@ plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = TR
     find_hull <- function(df) df[chull(df$dim1, df$dim2), ]
     hulls <- plyr::ddply(coords, "cluster", find_hull)
     
-    d1 <- melt(dist1)
+    d1 <- reshape2::melt(dist1)
     d1 <- d1[d1$value!=0,]
     d2 <- merge(d1, coords, by.x = "Var1", by.y = "group", all.x = T)
     d3 <- merge(d2, coords, by.x = "Var2", by.y = "group", all.x = T)
