@@ -10,15 +10,15 @@
 
 #dat<-simMGCFA
 
-require("shiny", quietly = T)
-require("lavaan", quietly = T)
-require("magrittr", quietly = T)
-require("reshape2", quietly = T)
-require("markdown", quietly = T)
-require("DT", quietly = T)
-require("ggplot2", quietly = T)
-require("ggrepel", quietly = T)
-require("dplyr", quietly = T)
+requireNamespace("shiny", quietly = T)
+requireNamespace("lavaan", quietly = T)
+requireNamespace("magrittr", quietly = T)
+requireNamespace("reshape2", quietly = T)
+requireNamespace("markdown", quietly = T)
+requireNamespace("DT", quietly = T)
+requireNamespace("ggplot2", quietly = T)
+requireNamespace("ggrepel", quietly = T)
+requireNamespace("dplyr", quietly = T)
 options(shiny.maxRequestSize=100*1024^2) 
 
 
@@ -77,16 +77,27 @@ if(.verbose) cli::cat_rule("Begin log")
   
   # Reading in the data from globalEnv ####
 # reactive({ 
+  if( ifelse(length(.model == "demo") == 0, FALSE, .model == "demo") ) { 
+    shinyjs::click("useSimulated")
+    
+    } else {
+      
+      
   if(!is.null(.data) & !is.null(.group) ) { 
-    if(any(class(.data)=="tbl")) .data <- as.data.frame.list(unclass(.data))
+    if(any(class(.data)=="tbl")) .data <- as.data.frame.list(lapply(unclass(.data), unclass))
     local.data <- .data[, c(colnames(.data)[colnames(.data) == .group],
                        colnames(.data)[colnames(.data) != .group])]
     verb(colnames(local.data))
     colnames(local.data)[1] <- "grp"
     verb("changed the data order")
-  } else if (!is.null(.data) & is.null(.group) ) {
-    local.data <- .data
     
+    if(any(!sapply(local.data[-1], is.numeric))) 
+      stopApp(stop("All the variables in the dataset (beside group) must be numeric"))
+    
+    
+  } else if (!is.null(.data) & is.null(.group) ) {
+    #local.data <- .data
+    stop("The grouping variable must be specified.")
   }
   
   
@@ -105,6 +116,7 @@ if(.verbose) cli::cat_rule("Begin log")
   
   showNotification("Using data from the R object.", type="message", duration=10)
   }
+}
 # }) 
   
   
@@ -819,25 +831,6 @@ group.partial = c('person =~ impfree') ",
   })
   
   
-# measures <- reactive({ 
-# 
-#   # If there is some data loaded and number of countries is not more than 2
-#   if( !is.null(dt$dat) &  length(vals$keeprows) < 3  ) { 
-#     
-#     showNotification("The number of groups should be more than 2. Resetting to the initial number of groups.", type="warning", duration=5)
-#     
-#     vals$keeprows <- unique(dt$dat[,1])
-#     vals$excluded<-NULL
-#     
-#   } else if (is.null(dt$dat)) {
-#     verb("Didn't compute MDS, because dt$dat is null.")
-#     
-#   } else {
-#     
-#     subsettingMatrices()
-#     
-#      }
-# })  
 #... The switch for plot #####
   observeEvent(input$netSwitch, {
     
@@ -855,12 +848,28 @@ group.partial = c('person =~ impfree') ",
     
     
     # validate(need(!is.null(dt$dat), message="Data need to be loaded"),
-    #          need(input$measure=="covariance"|input$measure=="correlation" |  !is.null(dt$model), 
+    #          need(input$measure=="covariance"|input$measure=="correlation" |  !is.null(dt$model),
     #               message="Model needs to be specified"),
     #          need(  ifelse(is.matrix(mds1()), ncol(mds1())==2, TRUE),
-    #          message="Can't create two-dimensional representation, because got negative eigenvalue. \nTry to include/exclude groups or use another measure. It's also possible that you have already found a set of invariant groups.")
+    #          message="Can't create two-dimensional representation, because of negative eigenvalue. \nTry to include/exclude groups or use another measure. It's also possible that you have already found a set of invariant groups.")
     #          )
-    
+
+      # If there is some data loaded and number of countries is not more than 2
+      if( !is.null(dt$dat) &  length(vals$keeprows) < 3  ) {
+
+        showNotification("The number of groups should be more than 2. Resetting to the initial number of groups.", type="warning", duration=5)
+
+        vals$keeprows <- unique(dt$dat[,1])
+        vals$excluded<-NULL
+
+      } else if (is.null(dt$dat)) {
+        verb("Didn't compute MDS, because dt$dat is null.")
+
+      } else {
+
+        subsettingMatrices()
+
+         }
  
 
     
@@ -889,94 +898,6 @@ if(!input$netSwitch) {
   g+ggtitle(table.header())
   
 }
-
-
-
-
-  # ggplot2::ggplot(g$data, aes(dim1, dim2, col=group))+geom_point(show.legend = F, size=3)+theme_minimal()
-    
-# OLD EMBEDDED CODE <..------------------------------------------------------------------------    
-    # d<-mds1() %>% set_colnames(c("dim1", "dim2")) %>% as.data.frame %>%
-    #   mutate(group=rownames(.), cluster=clusters())
-    # 
-    # g<-ggplot(d, aes(dim1, dim2,  col=as.factor(cluster)))+
-    #   geom_point( size=5, show.legend = F)+labs(x="", y="", col="")+
-    #   geom_text_repel(aes(label=group),point.padding = unit(.3, "lines"), show.legend=F)+
-    #   theme_minimal()+
-    #   #coord_fixed()+
-    #   scale_colour_hue(l = 50, c = 120)+
-    #   theme(panel.grid = element_blank(), axis.line=element_line(size=.5),axis.ticks=element_line(size=.5), plot.title=element_text(face="bold", size=18))+
-    #   ggtitle(paste("Clustering based on", isolate(input$measure) ))
-    
-    
-   #  if(isolate(input$measure=="fitincrement.scalar"|input$measure=="fitincrement.metric")) {
-   #         
-   #    
-   # r=   switch(isolate(input$fitincrement.chosen), 
-   #           cfi=.005,
-   #           rmsea=.0075,
-   #           srmr=0,
-   #           nnfi=0,
-   #           gfi=0,
-   #           rmsea.ci.upper = 0
-   #           )
-   # 
-   #    xc = min(d$dim1) +  sqrt(r^2/2)
-   #    yc = min(d$dim2) +  sqrt(r^2/2)
-   #    
-   #    circle.data <- data.frame(x = xc+r*cos(seq(0,2*pi,length.out=100)), 
-   #                              y=  yc+r*sin(seq(0,2*pi,length.out=100)))
-   #    
-   #    g<-g+geom_path(data=circle.data, aes(x,y#, label=NULL
-   #                                         ), col="lightgray", linetype="dashed")
-   #    if(r!=0) {
-   #    g<-g+labs(caption=paste("The circle has diameter", round(r*2, 3), "meaning the increment \nin the fit index is within interval recommended by Chen"))
-   #    }
-   #    
-   #  } else if (isolate(input$measure == "parameters.loadings")) {
-   #    
-   #      fits<-attr(modelStorage$loadings, "fit")[c("cfi", "rmsea", "srmr")]
-   #  
-   #      caption<-paste(paste(c("CFI=", "RMSEA=", "SRMR="), sep=""),
-   #                     paste(round(fits,3), sep=""), collapse=", ")
-   #  
-   #  
-   #  
-   #      if(  nrow(modelStorage$loadings)>length(vals$keeprows)) {
-   #        caption <- paste("Fit for ", nrow(modelStorage$loadings), "groups:", caption, ". \nThe graph is based on a subset of parameters from larger model.")
-   #  
-   #        #output$forceFitLink <- renderUI({ actionLink("forceFitting", "Refit for current groups") })
-   #  
-   #      }
-   #      
-   #      g<-g+labs(caption=caption)
-   #    
-   #  } else if (isolate(input$measure == "parameters.intercepts")) {
-   #    
-   #    fits<-attr(modelStorage$intercepts, "fit")[c("cfi", "rmsea", "srmr")]
-   #    
-   #    caption<-paste(paste(c("CFI=", "RMSEA=", "SRMR="), sep=""),
-   #                   paste(round(fits,3), sep=""), collapse=", ")
-   #    
-   #    
-   #    
-   #    if(  nrow(modelStorage$intercepts)>length(vals$keeprows)) {
-   #      caption <- paste("Fit for ", nrow(modelStorage$intercepts), "groups:", caption, ". \nThe graph is based on a subset of parameters from larger model.")
-   #      
-   #      #output$forceFitLink <- renderUI({ actionLink("forceFitting", "Refit for current groups") })
-   #      
-   #      }
-   #    
-   #    g<-g+labs(caption=caption)
-   #    
-   #    
-   #  } else {}
-   #  
-   #  g
-# ..> END OF OLD EMBEDDED CODE -------------------------------------------------------------------
-
-    
-    
       })
   
  

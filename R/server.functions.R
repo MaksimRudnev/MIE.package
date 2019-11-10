@@ -29,15 +29,21 @@ globalMI <- function(...) {
 
 
 #' Run Shiny MIE application
-#' 
+#' @param model Character, lavaan formula. Special value "demo" to use simulated dataset and model.
 #' @param data Data.frame containing only the variables to be used in calculations. May contain only numeric variables. If `group` argument is not specified, the group variable should be the first in the data.
-#' @param model Character, lavaan formula.
 #' @param group Character, name of the variable in data.
+#' 
+#' @examples if (interactive()) { 
+#' runMIE("f =~ a1 + a2 + a3", mydr, "municipality") 
+#' })
 #' 
 #' @export
 runMIE <- function(model = NULL, data = NULL,  group = NULL, verbose = FALSE) {
   
-  .GlobalEnv$.data <- data
+  
+  #if(!is.null(data) & is.null(group)) stop("The grouping variable should be specified.")
+  
+  .GlobalEnv$.data <- data 
   .GlobalEnv$.model <- model
   .GlobalEnv$.group <- group
   .GlobalEnv$.verbose <- verbose

@@ -3,12 +3,14 @@
 #load("dat.R")
 #dat<-simMGCFA
 library(shiny)
+library(shinyjs)
 library(markdown)
 library(shinyWidgets)
 
 # Define UI for application that draws a histogram
 shinyUI(
   fluidPage(
+    useShinyjs(),
     tags$head(tags$style(
       HTML('
            #sidebar {

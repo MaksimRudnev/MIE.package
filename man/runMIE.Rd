@@ -7,7 +7,7 @@
 runMIE(model = NULL, data = NULL, group = NULL, verbose = FALSE)
 }
 \arguments{
-\item{model}{Character, lavaan formula.}
+\item{model}{Character, lavaan formula. Special value "demo" to use simulated dataset and model.}
 
 \item{data}{Data.frame containing only the variables to be used in calculations. May contain only numeric variables. If `group` argument is not specified, the group variable should be the first in the data.}
 
@@ -15,4 +15,10 @@ runMIE(model = NULL, data = NULL, group = NULL, verbose = FALSE)
 }
 \description{
 Run Shiny MIE application
+}
+\examples{
+if (interactive()) { 
+runMIE("f =~ a1 + a2 + a3", mydr, "municipality") 
+})
+
 }
