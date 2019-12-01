@@ -4,9 +4,15 @@
 \alias{pairwiseFit}
 \title{Computes MGCFA model for a given pair of groups}
 \usage{
-pairwiseFit(model, data, group = "cntry", constraints = c(""),
-  pairs.of.groups = NULL, message = "Fitting pairwise lavaan models",
-  shiny = FALSE)
+pairwiseFit(
+  model,
+  data,
+  group = "cntry",
+  constraints = c(""),
+  pairs.of.groups = NULL,
+  message = "Fitting pairwise lavaan models",
+  shiny = FALSE
+)
 }
 \arguments{
 \item{model}{Model in lavaan syntax}

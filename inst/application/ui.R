@@ -2,10 +2,11 @@
 #
 #load("dat.R")
 #dat<-simMGCFA
-library(shiny)
-library(shinyjs)
-library(markdown)
-library(shinyWidgets)
+
+requireNamespace("shiny", quietly = T)
+requireNamespace("shinyjs", quietly = T)
+requireNamespace("markdown", quietly = T)
+requireNamespace("shinyWidgets", quietly = T)
 
 # Define UI for application that draws a histogram
 shinyUI(

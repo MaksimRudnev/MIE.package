@@ -19,6 +19,7 @@ requireNamespace("DT", quietly = T)
 requireNamespace("ggplot2", quietly = T)
 requireNamespace("ggrepel", quietly = T)
 requireNamespace("dplyr", quietly = T)
+#requireNamespace("shinyjs", quietly = T)
 options(shiny.maxRequestSize=100*1024^2) 
 
 
@@ -573,6 +574,7 @@ subsettingMatrices <- reactive ({
        subset.loadings <- MGCFAparameters(model = dt$model,
                                           data = selectedData(),
                                           parameters = "loadings", 
+                                          group = "grp",
                                           extra.options=dt$extra.options, 
                                           shiny=TRUE)
 
@@ -613,6 +615,7 @@ subsettingMatrices <- reactive ({
       subset.intercepts<- MGCFAparameters(model = dt$model,
                                           data = selectedData(), 
                                           parameters = "intercepts", 
+                                          group = "grp",
                                           extra.options=dt$extra.options, 
                                           shiny=TRUE)
       
@@ -677,23 +680,36 @@ subsettingMatrices <- reactive ({
   
   observeEvent(input$lavaan.options, {
     
-    extra.options.string <- paste(deparse(dt$extra.options, control=c("quoteExpressions")), collapse="")
+    #extra.options.string <- paste(deparse(dt$extra.options, control=c("quoteExpressions")), collapse="")
+    # if(extra.options.string=="NULL") {
+    #   extra.options.string<-NULL 
+    # } else {
+    #   extra.options.string<-gsub("^list\\(|\\)$", "", extra.options.string)
+    # }
+    
+    if( length(dt$extra.options)!=0) {
+    extra.options.string <- paste(sapply(1:length(dt$extra.options), 
+                     function(x) paste(names(dt$extra.options)[x], "=", 
+                                       ifelse(is.character(dt$extra.options[[x]]),
+                                          paste0("'", dt$extra.options[[x]], "'"),
+                                          dt$extra.options[[x]])
+                                       
+                                       )), collapse = ",\n")
+    
+    } else {
+      extra.options.string = dt$extra.options
+    }
   
-    if(extra.options.string=="NULL") {
-      extra.options.string<-NULL 
-      } else {
-        extra.options.string<-gsub("^list\\(|\\)$", "", extra.options.string)
-        }
+  
     
     showModal(modalDialog(
       title = "lavaan options",
-      "Override defaults of `lavaan::cfa()` function. Type here any argument beside formula, data, and group. This is an EXPERIMENTAL option, beware!",
+      "Override defaults. Type here any argument available in lavaan's `cfa` and `lavOptions`, except formula, data, and group. This is an EXPERIMENTAL option, beware!",
       textAreaInput("model.options", "",
                     rows=7, cols=25, 
                     placeholder=
-"ordered = c('impfree', 'impfun'),
-orthogonal = TRUE,
-group.partial = c('person =~ impfree') ",
+"group.partial = c('person =~ impfree'),
+ orthogonal = TRUE",
                     value = extra.options.string ),
       actionButton("save.model.options", "Save", class="buttonHighlighted"),
       modalButton("Close", icon=icon("times")),
@@ -784,14 +800,21 @@ group.partial = c('person =~ impfree') ",
                   message="Model needs to be specified"))
     
       dd <- isolate(subsettingMatrices())
-      #str(dd)
       dd1 <- switch(class(dd),
-                   correlations =    format(round(unclass(dd), 2), digits = 2),
-                   covariances =     format(round(unclass(dd), 2), digits = 3, nsmall = 1, scientific = F),
-                   MGCFAparameters = format(round(unclass(dd), 2), digits = 3, nsmall = 1, scientific = F),
-                   incrementalFit =  format(round(dd$detailed[[input$fitincrement.chosen]], 2), digits = 3, nsmall = 1, scientific = F) #input$fitincrement.chosen
-                 )
-    
+                   correlations =    format(round(unclass(dd[vals$keeprows,]), 2), 
+                                            digits = 2),
+                   covariances =     format(round(unclass(dd[vals$keeprows,]), 2), 
+                                            digits = 3, nsmall = 1, scientific = F),
+                   MGCFAparameters = format(round(unclass(dd[vals$keeprows,]), 2), 
+                                            digits = 3, nsmall = 1, scientific = F),
+                   incrementalFit =  {
+                     ind.row <- rowSums(apply(attr(dd$bunch,"pairs.of.groups"), 2,  
+                                              `%in%`, vals$keeprows))==2
+                     format(round(dd$detailed[[input$fitincrement.chosen]][ind.row,], 2), 
+                            digits = 3, nsmall = 1, scientific = F)
+                     
+                 })
+
     DT::datatable(dd1, rownames=T, options = list(paging = FALSE, searching = FALSE, info=FALSE),
                   caption=table.header() )
     })
@@ -838,6 +861,7 @@ group.partial = c('person =~ impfree') ",
       
       updateMaterialSwitch(session, "netSwitch", value = FALSE)
     }
+    if(!input$netSwitch) removeNotification("nocutoffs")
     
   })
   

@@ -4,8 +4,14 @@
 \alias{MGCFAparameters}
 \title{Computes MGCFA models for all available groups in the data}
 \usage{
-MGCFAparameters(model = NULL, data, group = "cntry",
-  parameters = "loadings", extra.options = NULL, shiny = FALSE)
+MGCFAparameters(
+  model = NULL,
+  data,
+  group = "cntry",
+  parameters = "loadings",
+  extra.options = NULL,
+  shiny = FALSE
+)
 }
 \arguments{
 \item{model}{Model in lavaan syntax}

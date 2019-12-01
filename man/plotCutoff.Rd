@@ -4,8 +4,13 @@
 \alias{plotCutoff}
 \title{Plots network based on pairwise fit indices reduced to Chen's cutoffs}
 \usage{
-plotCutoff(measures, fit.index = NA, cutoff = NULL, weighted = TRUE,
-  drop = NULL)
+plotCutoff(
+  measures,
+  fit.index = NA,
+  cutoff = NULL,
+  weighted = TRUE,
+  drop = NULL
+)
 }
 \arguments{
 \item{measures}{The result of `incrementalFit`.}

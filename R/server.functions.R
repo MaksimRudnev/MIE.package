@@ -574,16 +574,26 @@ g
 plotCutoff <- function(measures, fit.index = NA, cutoff = NULL, weighted = TRUE, drop = NULL) {
   
   
+  if(any(!fit.index %in% c("cfi", "rmsea", "srmr"))) {
+    if (interactive()) {
+      showNotification("Cutoffs for this fit measure are not available. Using convenient .01 (unrealiable!).\n Consider switching off 'Use cutoffs' option.", type = "warning", duration = NULL, id = "nocutoffs")  
+  }} 
+  
   # remove dropped groups
   #if(!is.null(drop)) measures <- measures[!rownames(measures) %in% drop, ]
   
   #abs.thrshld <- switch(fit.index, cfi=function(x) `>`(x, .90), rmsea = function(x) `<`(x, .05))
   if(is.null(cutoff)) {
     #Chen's
-   thrshld <- switch(fit.index, 
-                         cfi   = function(x) `<`(x, .01),
-                         rmsea = function(x) `<`(x, .01),
-                         srmr  = function(x) `<`(x, .01))
+   # thrshld <- switch(fit.index, 
+   #                       cfi   = function(x) `<`(x, .01),
+   #                       rmsea = function(x) `<`(x, .01),
+   #                       srmr  = function(x) `<`(x, .01),
+   #                       nnfi  = function(x) `<`(x, .01) 
+   # 
+   #                   )
+    
+    thrshld <- function(x) `<`(x, .01)
   
   } else {
     thrshld <- function(x) `<`(x, cutoff)
@@ -609,6 +619,8 @@ plotCutoff <- function(measures, fit.index = NA, cutoff = NULL, weighted = TRUE,
   # remove dropped groups
   if(!is.null(drop)) dist1 <- dist1[!rownames(dist1) %in% drop, !(colnames(dist1) %in% drop) ]
   
+  thrshld.dist1 = 
+    
   dist2<-thrshld(dist1)*1 
   dist1[!thrshld(dist1)] <- 0 
   #diag(dist1)<-rep(0, nrow(dist1))

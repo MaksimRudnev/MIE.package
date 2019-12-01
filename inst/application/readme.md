@@ -6,7 +6,7 @@
 Invariance explorer helps to find groups that might demonstrate measurement invariance of latent factors.
 Instead of repeatedly running the models to test invariance, one may plot the group measures and visually select the ones that are closer to each other.
 * User may interactively include and exlude groups that look different (by clicking them), and the tool will automatically refit the models.
-* To facilitate combination of groups, they are also clustered.
+* To facilitate finding combination of groups, they are also clustered.
 
 ### Covariance-based approach
 Usually, assessment of measurement invariance  is based on a measurement model (which is assumed to be a true model). However, one may employ completely exploratory approach, using covariances between observed variables to find groups with the most similar structures. This is the default (and the quickest) option in the ```Measurement invariance explorer```. Of course, at some point one has to specify a measurement model, but it may be done *after* finding a set of groups with similar covariance structures.
@@ -14,7 +14,7 @@ Usually, assessment of measurement invariance  is based on a measurement model (
 If, or when, a measurement model is given, one can use it in ```Measurement invariance explorer``` to find sets of groups that are closer to each other using either model parameters or model fit indices.
 
 ### Parameter-based approach
-First, one has to specify measurement model using [lavaan syntax](http://lavaan.ugent.be/tutorial/syntax1.html). When you add a code, ```Measurement invariance explorer``` will automatically compute a common measurement invariance tests based on ```semTools``` package. Please, insert only ready-to-use model code, as computation may take a long time.
+First, one has to specify measurement model using [lavaan syntax](http://lavaan.ugent.be/tutorial/syntax1.html). When you add a code, ```Measurement invariance explorer``` will automatically compute a common measurement invariance tests like it ```semTools``` package used to do. Please, insert only ready-to-use model code, as computation can take a while.
 ```Measurement invariance explorer``` computes configural model to compare factor loadings and metric model (with fixed factor loadings) to compare intercepts. It is recommended first be sure that you found a set of groups that have similar loadings before comparing intercepts.
 
 ### Fit indices-based
