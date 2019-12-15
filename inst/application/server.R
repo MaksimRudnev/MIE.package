@@ -19,7 +19,8 @@ requireNamespace("DT", quietly = T)
 requireNamespace("ggplot2", quietly = T)
 requireNamespace("ggrepel", quietly = T)
 requireNamespace("dplyr", quietly = T)
-#requireNamespace("shinyjs", quietly = T)
+requireNamespace("shinyjs", quietly = T)
+requireNamespace("shinyWidgets", quietly = T)
 options(shiny.maxRequestSize=100*1024^2) 
 
 
