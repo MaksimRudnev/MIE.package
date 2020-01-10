@@ -69,9 +69,11 @@ pairs_of_groups <- function(variable) {
 #' @param pairs.of.groups Full list of pairs of groups, used in shiny only.
 #' @param message Notification in shiny.
 #' @param shiny If it is executed in shiny environment.
+#' @param ... Arguments passed to lavaan""cfa function.
 # @example # pairwiseFit(model="F =~ impfree + iphlppl + ipsuces + ipstrgv", data = ess6, group = "cntry", "loadings")
 #' 
 #' @return  The function returns matrix of fit indices for multiple group CFA models fitted to each possible pair of groups.
+#' @details Mostly for internal use  within \code{\link[MIE]{incrementalFit}}
 #' 
 #' @export
 pairwiseFit <- function(model,
@@ -81,7 +83,7 @@ pairwiseFit <- function(model,
                         pairs.of.groups=NULL, 
                         message="Fitting pairwise lavaan models",
                         shiny=FALSE
-                        #, extra.options
+                        , ...
                         
 ) {
   
@@ -93,13 +95,17 @@ pairwiseFit <- function(model,
   runPairwiseModels <- function() {
     model.lav<- lavaan::cfa(model, data=data[data$cntry==pairs.of.groups[1,1] | 
                                        data$cntry==pairs.of.groups[2,2],],
-                    group="cntry", group.equal=constraints#, extra.options
+                    group="cntry", group.equal=constraints, ...
     )
+    
+    #print("LAV CALL")
+    #print(model.lav@call)
     
     if(lavaan::lavInspect(model.lav, "converged")) mod<- lavaan::fitmeasures(model.lav) else mod <- rep(999, 41)
     
-    # 41 is a number of fit indices currently provided by lavaan  
-    mod<-matrix( c(mod, rep(0,41*(nrow(pairs.of.groups)-1))), nrow=41, dimnames=list(names(mod), NULL))
+    # FN is a number of fit indices currently provided by lavaan  (currently 41 )
+    FN = length(lavaan::fitmeasures(model.lav)) 
+    mod<-matrix( c(mod, rep(0,FN*(nrow(pairs.of.groups)-1))), nrow=FN, dimnames=list(names(mod), NULL))
     
     #Non-positive definite?
     non.positive <- FALSE
@@ -108,7 +114,7 @@ pairwiseFit <- function(model,
     for(x in 2:nrow(pairs.of.groups)) {
       model.lav<- lavaan::cfa(model, data=data[data$cntry==pairs.of.groups[x,1] | 
                                          data$cntry==pairs.of.groups[x,2],],
-                      group="cntry", group.equal=constraints#, extra.options
+                      group="cntry", group.equal=constraints, ... # extra.options
       )
       
       #If converged, record fitmeasure; if not converged add a missing sign 999.
@@ -382,9 +388,9 @@ computeCorrelation <- function(data, group) {
 
 #' Run pairwise models and compute decrease in fit
 #'
-#' @param ... The arguments passed to `pairwiseFit``
+#' @param ... The arguments passed to \code{\link[MIE]{pairwiseFit}}. Required arguments are \code{'model'}, \code{'data'}, and \code{'group'}.
 #' @param level Character. If "metric" (default) the decrease of fit between configural and metric model is computed, if "scalar", metric is compared to scalar model fit.
-#' @return  Returns a list with detailed output on every available fit index, and a large matrix used for plotting with `plotDistances`
+#' @return  Returns a list with detailed output on every available fit index, and a large matrix used for plotting with \code{\link[MIE]{plotDistances}}
 #'
 #'@export
 incrementalFit <- function(..., level="metric") {
@@ -564,20 +570,25 @@ g
 
 #' Plots network based on pairwise fit indices reduced to Chen's cutoffs
 #'  
-#' @param measures The result of `incrementalFit`.
-#' @param fit.index Index to be used to in representing measurement invariance distances. Only if the `measures` argument is an output of `incrementalFit`. Can be "cfi", "rmsea", or "srmr", because only for these indices the cutoffs were suggested by Chen (2007).
+#' @param measures The result of \code{\link[MIE]{incrementalFit}}
+#' @param fit.index Index to be used to in representing measurement invariance distances. Only if the `measures` argument is an output of \code{\link[MIE]{incrementalFit}}. Can be "cfi", "rmsea", or "srmr", because only for these indices the cutoffs were suggested by Chen (2007).
 #' @param drop Vector of group names to be dropped from the plot.
 #' @param weighted Logical. If weighted graph should be created. See \code{\link[igraph]{graph_from_adjacency_matrix}} for details.
 #' 
 #' @details The function extracts a given fit indeces from pairwise fitted MGCFAs, and uses cutoff of .01 to identify edges between groups (nodes), so that the groups for whom  invariance is supported, are connected on the plot. The results are plotted using \code{\link[igraph]{cluster_label_prop}}.
+#' @seealso \code{\link[MIE]{plotDistances}}
 #' @export         
-plotCutoff <- function(measures, fit.index = NA, cutoff = NULL, weighted = TRUE, drop = NULL) {
+plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = TRUE, drop = NULL) {
   
   
   if(any(!fit.index %in% c("cfi", "rmsea", "srmr"))) {
     if (interactive()) {
       showNotification("Cutoffs for this fit measure are not available. Using convenient .01 (unrealiable!).\n Consider switching off 'Use cutoffs' option.", type = "warning", duration = NULL, id = "nocutoffs")  
-  }} 
+    } # else {
+    #   warning("Cutoffs for this fit measure are not available. Using convenient .01 (unrealiable!).\n Consider switching off 'Use cutoffs' option.")
+    # }
+    
+    } 
   
   # remove dropped groups
   #if(!is.null(drop)) measures <- measures[!rownames(measures) %in% drop, ]

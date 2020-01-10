@@ -11,7 +11,8 @@ pairwiseFit(
   constraints = c(""),
   pairs.of.groups = NULL,
   message = "Fitting pairwise lavaan models",
-  shiny = FALSE
+  shiny = FALSE,
+  ...
 )
 }
 \arguments{
@@ -28,10 +29,15 @@ pairwiseFit(
 \item{message}{Notification in shiny.}
 
 \item{shiny}{If it is executed in shiny environment.}
+
+\item{...}{Arguments passed to lavaan""cfa function.}
 }
 \value{
 The function returns matrix of fit indices for multiple group CFA models fitted to each possible pair of groups.
 }
 \description{
 Computes MGCFA model for a given pair of groups
+}
+\details{
+Mostly for internal use  within \code{\link[MIE]{incrementalFit}}
 }

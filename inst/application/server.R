@@ -256,15 +256,28 @@ subsettingMatrices <- reactive ({
       
       
       verb("Computing missing pairs of conf models");
-      conf.pairwise<- pairwiseFit(model = dt$model,
-                                  data  = dt$dat, 
-                                  group = "grp",
-                                  constraints = c(""),
-                                  pairs.of.groups = pairs.c, 
-                                  message = 'Fitting pairwise configural models by lavaan',
-                                  shiny = TRUE#,
-                                  #extra.options = dt$extra.options
-                                  )
+
+        
+      # conf.pairwise<- pairwiseFit(model = dt$model,
+      #                             data  = dt$dat, 
+      #                             group = "grp",
+      #                             constraints = c(""),
+      #                             pairs.of.groups = pairs.c, 
+      #                             message = 'Fitting pairwise configural models by lavaan',
+      #                             shiny = TRUE#,
+      #                             #extra.options = dt$extra.options
+      #                             )
+                                  
+      # attempt to include extra options
+      conf.pairwise<-    do.call("pairwiseFit", append(list(
+        model = dt$model,
+        data  = dt$dat, 
+        group = "grp",
+        constraints = c(""),
+        pairs.of.groups = pairs.c, 
+        message = 'Fitting pairwise configural models by lavaan',
+        shiny = TRUE
+      ), dt$extra.options))
       
       
       
@@ -324,15 +337,27 @@ subsettingMatrices <- reactive ({
         
         verb("Computing metric models for "); print(pairs.c);
         
-        metric.pairwise<- pairwiseFit(model = dt$model,
-                                    data  = dt$dat, 
-                                    group = "grp",
-                                    constraints = c("loadings"),
-                                    pairs.of.groups = pairs.c, 
-                                    message = 'Fitting pairwise metric models by lavaan',
-                                    shiny = TRUE#,
-                                    #extra.options = dt$extra.options
-        )
+        # metric.pairwise<- pairwiseFit(model = dt$model,
+        #                             data  = dt$dat, 
+        #                             group = "grp",
+        #                             constraints = c("loadings"),
+        #                             pairs.of.groups = pairs.c, 
+        #                             message = 'Fitting pairwise metric models by lavaan',
+        #                             shiny = TRUE#,
+        #                             #extra.options = dt$extra.options
+        # )
+        
+        # attempt to include extra options
+        metric.pairwise<-   do.call("pairwiseFit", append(list(
+          model = dt$model,
+          data  = dt$dat, 
+          group = "grp",
+          constraints = c("loadings"),
+          pairs.of.groups = pairs.c, 
+          message = 'Fitting pairwise metric models by lavaan',
+          shiny = TRUE
+        ), dt$extra.options))
+        
         
         
         
@@ -421,16 +446,26 @@ subsettingMatrices <- reactive ({
       
       verb("Computing metric models for "); print(pairs.c);
       
-      metric.pairwise<- pairwiseFit(model = dt$model,
-                                    data  = dt$dat, 
-                                    group = "grp",
-                                    constraints = c("loadings"),
-                                    pairs.of.groups = pairs.c, 
-                                    message = 'Fitting pairwise metric models by lavaan',
-                                    shiny = TRUE#,
-                                    #extra.options = dt$extra.options
-      )
+      # metric.pairwise<- pairwiseFit(model = dt$model,
+      #                               data  = dt$dat, 
+      #                               group = "grp",
+      #                               constraints = c("loadings"),
+      #                               pairs.of.groups = pairs.c, 
+      #                               message = 'Fitting pairwise metric models by lavaan',
+      #                               shiny = TRUE#,
+      #                               #extra.options = dt$extra.options
+      # )
       
+      # attempt to include extra options
+      metric.pairwise<-   do.call("pairwiseFit", append(list(
+        model = dt$model,
+        data  = dt$dat, 
+        group = "grp",
+        constraints = c("loadings"),
+        pairs.of.groups = pairs.c, 
+        message = 'Fitting pairwise metric models by lavaan',
+        shiny = TRUE
+      ), dt$extra.options))
       
       
       if(it.is.required.to.refit.model.to.new.formula | is.null(modelStorage$metric))  { #rewrite
@@ -487,17 +522,26 @@ subsettingMatrices <- reactive ({
       
       
       verb("Computing missing pairs of scalar models");
-      scalar.pairwise<- pairwiseFit(model = dt$model,
-                                  data  = dt$dat, 
-                                  group = "grp",
-                                  constraints = c("loadings", "intercepts"),
-                                  pairs.of.groups = pairs.c, 
-                                  message = 'Fitting pairwise scalar models by lavaan',
-                                  shiny = TRUE#,
-                                  #extra.options = dt$extra.options
-      )
+      # scalar.pairwise<- pairwiseFit(model = dt$model,
+      #                             data  = dt$dat, 
+      #                             group = "grp",
+      #                             constraints = c("loadings", "intercepts"),
+      #                             pairs.of.groups = pairs.c, 
+      #                             message = 'Fitting pairwise scalar models by lavaan',
+      #                             shiny = TRUE#,
+      #                             #extra.options = dt$extra.options
+      # )
       
-      
+      # attempt to include extra options
+      scalar.pairwise<-   do.call("pairwiseFit", append(list(
+        model = dt$model,
+        data  = dt$dat, 
+        group = "grp",
+        constraints = c("loadings", "intercepts"),
+        pairs.of.groups = pairs.c, 
+        message = 'Fitting pairwise scalar models by lavaan',
+        shiny = TRUE
+      ), dt$extra.options))
       
       if(it.is.required.to.refit.model.to.new.formula | is.null(modelStorage$scalar))  { #rewrite
         

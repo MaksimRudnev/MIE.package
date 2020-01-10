@@ -1,6 +1,6 @@
 Package: MIE
 Title: Measurement Invariance Explorer (MIE) 
-Version: 0.4.7
+Version: 0.4.8
 Authors@R: person("Maksim", "Rudnev", email = "maksim.rudnev@gmail.com", role = c("aut", "cre"))
 Description: MIE helps to find groups that might demonstrate measurement invariance of latent factors. Instead of repeatedly running the models to test invariance, one may plot the group measures and visually select the ones that are closer to each other. User may interactively include and exclude groups that look different (by clicking on them), and the tool will automatically refit the models. To facilitate combination of groups, they are also clustered.
 Depends: R (>= 3.4), lavaan (>= 0.6), ggplot2 (>= 3.0), ggrepel (>= 0.8), ggforce (>= 0.3), shiny (>= 1.1), DT (>= 0.5), igraph (>= 1.2), shinyjs (>= 1.0), shinyWidgets (>= 0.4)
@@ -14,4 +14,4 @@ Imports:
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.0.1
+RoxygenNote: 7.0.2
