@@ -388,8 +388,15 @@ computeCorrelation <- function(data, group) {
 
 #' Run pairwise models and compute decrease in fit
 #'
+#' @description Runs two MGCFA models for each possible pair of groups and computes change in fit.
 #' @param ... The arguments passed to \code{\link[MIE]{pairwiseFit}}. Required arguments are \code{'model'}, \code{'data'}, and \code{'group'}.
-#' @param level Character. If "metric" (default) the decrease of fit between configural and metric model is computed, if "scalar", metric is compared to scalar model fit.
+#' @param level Character. A model set to be computed. The function will compute a decrease in fit between two models:
+#' \describe{
+#' \item{metric}{(default) between configural and metric models}
+#' \item{scalar}{between metric and scalar models}
+#' \item{at.once}{between configural and scalar models, }
+#' \item{intercepts.first}{between configural and model with equal intercepts/thresholds, but free loadings}
+#' }
 #' @return  Returns a list with detailed output on every available fit index, and a large matrix used for plotting with \code{\link[MIE]{plotDistances}}
 #'
 #'@export
@@ -410,7 +417,25 @@ incrementalFit <- function(..., level="metric") {
       cat("Fitting metric models\n")
     metric = pairwiseFit(..., constraints = c("loadings"))
       cat("\nFitting scalar models\n")
-    scalar = pairwiseFit(..., constraints = c("loadings", "intercepts"))
+    scalar = pairwiseFit(..., constraints = c("loadings", "intercepts", "thresholds"))
+    fit.decrease <- abs(metric - scalar)
+    detailed<-lapply(rownames(fit.decrease), function(f) cbind(metric=metric[f,], scalar=scalar[f,], fit.decrease=fit.decrease[f, ])  )
+    names(detailed)<-rownames(fit.decrease)
+    
+  } else  if(level=="at.once") {
+    cat("Fitting configural models\n")
+    metric = pairwiseFit(..., constraints = c(""))
+    cat("\nFitting scalar models\n")
+    scalar = pairwiseFit(..., constraints = c("loadings", "intercepts", "thresholds"))
+    fit.decrease <- abs(metric - scalar)
+    detailed<-lapply(rownames(fit.decrease), function(f) cbind(metric=metric[f,], scalar=scalar[f,], fit.decrease=fit.decrease[f, ])  )
+    names(detailed)<-rownames(fit.decrease)
+  
+    }   else  if(level=="intercepts.first") {
+    cat("Fitting configural models\n")
+    metric = pairwiseFit(..., constraints = c(""))
+    cat("\nFitting equal-intercepts models\n")
+    scalar = pairwiseFit(..., constraints = c("intercepts", "thresholds"))
     fit.decrease <- abs(metric - scalar)
     detailed<-lapply(rownames(fit.decrease), function(f) cbind(metric=metric[f,], scalar=scalar[f,], fit.decrease=fit.decrease[f, ])  )
     names(detailed)<-rownames(fit.decrease)

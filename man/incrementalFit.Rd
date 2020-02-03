@@ -9,11 +9,17 @@ incrementalFit(..., level = "metric")
 \arguments{
 \item{...}{The arguments passed to \code{\link[MIE]{pairwiseFit}}. Required arguments are \code{'model'}, \code{'data'}, and \code{'group'}.}
 
-\item{level}{Character. If "metric" (default) the decrease of fit between configural and metric model is computed, if "scalar", metric is compared to scalar model fit.}
+\item{level}{Character. A model set to be computed. The function will compute a decrease in fit between two models:
+\describe{
+\item{metric}{(default) between configural and metric models}
+\item{scalar}{between metric and scalar models}
+\item{at.once}{between configural and scalar models, }
+\item{intercepts.first}{between configural and model with equal intercepts/thresholds, but free loadings}
+}}
 }
 \value{
 Returns a list with detailed output on every available fit index, and a large matrix used for plotting with \code{\link[MIE]{plotDistances}}
 }
 \description{
-Run pairwise models and compute decrease in fit
+Runs two MGCFA models for each possible pair of groups and computes change in fit.
 }
