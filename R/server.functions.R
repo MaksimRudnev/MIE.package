@@ -69,7 +69,7 @@ pairs_of_groups <- function(variable) {
 #' @param pairs.of.groups Full list of pairs of groups, used in shiny only.
 #' @param message Notification in shiny.
 #' @param shiny If it is executed in shiny environment.
-#' @param ... Arguments passed to lavaan""cfa function.
+#' @param ... Arguments passed to lavaan 'cfa' function.
 # @example # pairwiseFit(model="F =~ impfree + iphlppl + ipsuces + ipstrgv", data = ess6, group = "cntry", "loadings")
 #' 
 #' @return  The function returns matrix of fit indices for multiple group CFA models fitted to each possible pair of groups.
@@ -392,10 +392,12 @@ computeCorrelation <- function(data, group) {
 #' @param ... The arguments passed to \code{\link[MIE]{pairwiseFit}}. Required arguments are \code{'model'}, \code{'data'}, and \code{'group'}.
 #' @param level Character. A model set to be computed. The function will compute a decrease in fit between two models:
 #' \describe{
-#' \item{metric}{(default) between configural and metric models}
-#' \item{scalar}{between metric and scalar models}
-#' \item{at.once}{between configural and scalar models, }
-#' \item{intercepts.first}{between configural and model with equal intercepts/thresholds, but free loadings}
+#' \item{metric}{(default) between configural and metric models.}
+#' \item{scalar}{between metric and scalar models.}
+#' \item{at.once}{between configural and scalar models.}
+#' \item{intercepts.first}{between configural and model with equal intercepts/thresholds, but free loadings (Wu & Estabrook, 2017's step one). Appropriate when all the indicators are ordlinal.}
+#' \item{intercepts.scalar}{between a model with equal intercepts/thresholds, but free loadings and a full scalar model (Wu & Estabrook, 2017's step two). Appropriate when all the indicators are ordlinal.}
+#' 
 #' }
 #' @return  Returns a list with detailed output on every available fit index, and a large matrix used for plotting with \code{\link[MIE]{plotDistances}}
 #'
@@ -424,22 +426,31 @@ incrementalFit <- function(..., level="metric") {
     
   } else  if(level=="at.once") {
     cat("Fitting configural models\n")
-    metric = pairwiseFit(..., constraints = c(""))
+    configural = pairwiseFit(..., constraints = c(""))
     cat("\nFitting scalar models\n")
     scalar = pairwiseFit(..., constraints = c("loadings", "intercepts", "thresholds"))
-    fit.decrease <- abs(metric - scalar)
-    detailed<-lapply(rownames(fit.decrease), function(f) cbind(metric=metric[f,], scalar=scalar[f,], fit.decrease=fit.decrease[f, ])  )
+    fit.decrease <- abs(configural - scalar)
+    detailed<-lapply(rownames(fit.decrease), function(f) cbind(configural=configural[f,], scalar=scalar[f,], fit.decrease=fit.decrease[f, ])  )
     names(detailed)<-rownames(fit.decrease)
   
     }   else  if(level=="intercepts.first") {
     cat("Fitting configural models\n")
-    metric = pairwiseFit(..., constraints = c(""))
+      configural = pairwiseFit(..., constraints = c(""))
     cat("\nFitting equal-intercepts models\n")
-    scalar = pairwiseFit(..., constraints = c("intercepts", "thresholds"))
-    fit.decrease <- abs(metric - scalar)
-    detailed<-lapply(rownames(fit.decrease), function(f) cbind(metric=metric[f,], scalar=scalar[f,], fit.decrease=fit.decrease[f, ])  )
+    int.only = pairwiseFit(..., constraints = c("intercepts", "thresholds"))
+    fit.decrease <- abs(configural - int.only)
+    detailed<-lapply(rownames(fit.decrease), function(f) cbind(configural=configural[f,], int.only=int.only[f,], fit.decrease=fit.decrease[f, ])  )
     names(detailed)<-rownames(fit.decrease)
-  }
+    
+    }    else  if(level=="intercepts.scalar") {
+      cat("Fitting equal-intercepts models\n")
+      int.only = pairwiseFit(..., constraints = c("intercepts", "thresholds"))
+      cat("\nFitting scalar models\n")
+      scalar = pairwiseFit(..., constraints = c("loadings", "intercepts", "thresholds"))
+      fit.decrease <- abs(int.only - scalar)
+      detailed<-lapply(rownames(fit.decrease), function(f) cbind(int.only=int.only[f,], scalar=scalar[f,], fit.decrease=fit.decrease[f, ])  )
+      names(detailed)<-rownames(fit.decrease)
+    }
   
   
  out <- list(detailed=detailed, bunch=fit.decrease)

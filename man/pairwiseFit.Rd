@@ -30,7 +30,7 @@ pairwiseFit(
 
 \item{shiny}{If it is executed in shiny environment.}
 
-\item{...}{Arguments passed to lavaan""cfa function.}
+\item{...}{Arguments passed to lavaan 'cfa' function.}
 }
 \value{
 The function returns matrix of fit indices for multiple group CFA models fitted to each possible pair of groups.

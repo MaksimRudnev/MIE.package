@@ -11,10 +11,12 @@ incrementalFit(..., level = "metric")
 
 \item{level}{Character. A model set to be computed. The function will compute a decrease in fit between two models:
 \describe{
-\item{metric}{(default) between configural and metric models}
-\item{scalar}{between metric and scalar models}
-\item{at.once}{between configural and scalar models, }
-\item{intercepts.first}{between configural and model with equal intercepts/thresholds, but free loadings}
+\item{metric}{(default) between configural and metric models.}
+\item{scalar}{between metric and scalar models.}
+\item{at.once}{between configural and scalar models.}
+\item{intercepts.first}{between configural and model with equal intercepts/thresholds, but free loadings (Wu & Estabrook, 2017's step one). Appropriate when all the indicators are ordlinal.}
+\item{intercepts.scalar}{between a model with equal intercepts/thresholds, but free loadings and a full scalar model (Wu & Estabrook, 2017's step two). Appropriate when all the indicators are ordlinal.}
+
 }}
 }
 \value{
