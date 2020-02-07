@@ -101,10 +101,12 @@ pairwiseFit <- function(model,
     #print("LAV CALL")
     #print(model.lav@call)
     
-    if(lavaan::lavInspect(model.lav, "converged")) mod<- lavaan::fitmeasures(model.lav) else mod <- rep(999, 41)
-    
-    # FN is a number of fit indices currently provided by lavaan  (currently 41 )
+    # FN is a number of fit indices currently provided by lavaan  (currently 41)
     FN = length(lavaan::fitmeasures(model.lav)) 
+    
+    if(lavaan::lavInspect(model.lav, "converged")) mod<- lavaan::fitmeasures(model.lav) else mod <- rep(999, FN)
+    
+    
     mod<-matrix( c(mod, rep(0,FN*(nrow(pairs.of.groups)-1))), nrow=FN, dimnames=list(names(mod), NULL))
     
     #Non-positive definite?
@@ -118,7 +120,7 @@ pairwiseFit <- function(model,
       )
       
       #If converged, record fitmeasure; if not converged add a missing sign 999.
-      if(lavaan::lavInspect(model.lav, "converged")) mod[,x]<- lavaan::fitmeasures(model.lav) else mod[,x]<- rep(999, 41)
+      if(lavaan::lavInspect(model.lav, "converged")) mod[,x]<- lavaan::fitmeasures(model.lav) else mod[,x]<- rep(999, FN)
       
       #Save non-positive definite status
       
