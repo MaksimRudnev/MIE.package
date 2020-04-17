@@ -10,13 +10,20 @@ globalMI <- function(...) {
   
   r.conf<-lavaan::cfa(...)
   r.metric<-lavaan::cfa(..., group.equal = "loadings")
-  r.scalar<-lavaan::cfa(..., group.equal = c("loadings", "intercepts"))
+  r.scalar<-lavaan::cfa(..., group.equal = c("loadings", "intercepts", "thresholds"))
   
   #print(r.conf@call[-3])
   
   out <- lavaan::lavTestLRT(r.conf, r.metric, r.scalar, model.names = c("Configural", "Metric", "Scalar"))
   #out <- out[,names(out)[c(4, 1, 5, 6)]]
-  out2<-t(sapply(list(r.conf, r.metric, r.scalar),   fitmeasures)[c("cfi", "tli", "rmsea", "srmr"),])
+  
+  fit.mes.index <- c("cfi", "tli", "rmsea", "srmr")
+  if( all( c("cfi.scaled", "rmsea.scaled")  %in% names(lavaan::fitMeasures(r.conf)))) 
+    fit.mes.index <- append(fit.mes.index, c("cfi.scaled", "rmsea.scaled"))
+  
+  out2<-t(sapply(list(r.conf, r.metric, r.scalar), lavaan::fitMeasures)[fit.mes.index,])
+  
+  
   out2.2 <- apply(out2, 2, function(x) (c(NA, x[2]-x[1], x[3]-x[2]  )))
   colnames(out2.2)<- paste("diff.", toupper(colnames(out2.2)), sep="")
   out2.3 <- t(Reduce("rbind", lapply(1:ncol(out2), function(x) rbind(out2[,x], out2.2[,x]))))
