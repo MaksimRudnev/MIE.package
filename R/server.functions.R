@@ -609,22 +609,22 @@ g
 #' Plots network based on pairwise fit indices reduced to Chen's cutoffs
 #'  
 #' @param measures The result of \code{\link[MIE]{incrementalFit}}
-#' @param fit.index Index to be used to in representing measurement invariance distances. Only if the `measures` argument is an output of \code{\link[MIE]{incrementalFit}}. Can be "cfi", "rmsea", or "srmr", because only for these indices the cutoffs were suggested by Chen (2007).
+#' @param fit.index Index to be used to in representing measurement invariance distances. Only if the `measures` argument is an output of \code{\link[MIE]{incrementalFit}}. Should be "cfi", "rmsea", or "srmr", because only for these indices the cutoffs were suggested by Chen (2007).
 #' @param drop Vector of group names to be dropped from the plot.
 #' @param weighted Logical. If weighted graph should be created. See \code{\link[igraph]{graph_from_adjacency_matrix}} for details.
 #' 
 #' @details The function extracts a given fit indeces from pairwise fitted MGCFAs, and uses cutoff of .01 to identify edges between groups (nodes), so that the groups for whom  invariance is supported, are connected on the plot. The results are plotted using \code{\link[igraph]{cluster_label_prop}}.
 #' @seealso \code{\link[MIE]{plotDistances}}
 #' @export         
-plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = TRUE, drop = NULL) {
+plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = TRUE, drop = NULL, shiny = F) {
   
   
   if(any(!fit.index %in% c("cfi", "rmsea", "srmr"))) {
-    if (interactive()) {
+    if (shiny == T) {
       showNotification("Cutoffs for this fit measure are not available. Using convenient .01 (unrealiable!).\n Consider switching off 'Use cutoffs' option.", type = "warning", duration = NULL, id = "nocutoffs")  
-    } # else {
-    #   warning("Cutoffs for this fit measure are not available. Using convenient .01 (unrealiable!).\n Consider switching off 'Use cutoffs' option.")
-    # }
+    } else {
+      warning("Cutoffs for this fit measure are not available. Using convenient .01 (unrealiable!).\n Interpret cautiously.")
+     }
     
     } 
   

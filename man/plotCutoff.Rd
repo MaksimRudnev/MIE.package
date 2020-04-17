@@ -9,13 +9,14 @@ plotCutoff(
   fit.index = "cfi",
   cutoff = NULL,
   weighted = TRUE,
-  drop = NULL
+  drop = NULL,
+  shiny = F
 )
 }
 \arguments{
 \item{measures}{The result of \code{\link[MIE]{incrementalFit}}}
 
-\item{fit.index}{Index to be used to in representing measurement invariance distances. Only if the `measures` argument is an output of \code{\link[MIE]{incrementalFit}}. Can be "cfi", "rmsea", or "srmr", because only for these indices the cutoffs were suggested by Chen (2007).}
+\item{fit.index}{Index to be used to in representing measurement invariance distances. Only if the `measures` argument is an output of \code{\link[MIE]{incrementalFit}}. Should be "cfi", "rmsea", or "srmr", because only for these indices the cutoffs were suggested by Chen (2007).}
 
 \item{weighted}{Logical. If weighted graph should be created. See \code{\link[igraph]{graph_from_adjacency_matrix}} for details.}
 

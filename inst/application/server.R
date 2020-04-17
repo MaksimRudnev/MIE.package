@@ -962,7 +962,8 @@ if(!input$netSwitch) {
   g<-  plotCutoff(d, 
              fit.index = input$fitincrement.chosen, 
              drop = vals$excluded,
-             weighted = T)
+             weighted = T,
+             shiny = T)
   dt$plot <- g$data
   g+ggtitle(table.header())
   
