@@ -7,7 +7,7 @@
 globalMI(...)
 }
 \arguments{
-\item{...}{Formula, group, and all the other eligible arguments of `lavaan::cfa` function.}
+\item{...}{Formula, group, and all the other eligible arguments of \code{\link[lavaan]{cfa}} function.}
 }
 \description{
 Computes configural, metric, and scala invariance models and compares them.

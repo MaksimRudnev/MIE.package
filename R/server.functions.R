@@ -3,35 +3,81 @@
 #' Test for measureent invariance in three steps
 #' @description Computes configural, metric, and scala invariance models and compares them.
 #' 
-#' @param ... Formula, group, and all the other eligible arguments of `lavaan::cfa` function.
+#' @param ... Formula, group, and all the other eligible arguments of \code{\link[lavaan]{cfa}} function.
 #'
 #' @export
 globalMI <- function(...) {
   
+  print("Running configural model")
   r.conf<-lavaan::cfa(...)
-  r.metric<-lavaan::cfa(..., group.equal = "loadings")
+  
+  if(any(lavaan::parameterTable(r.conf)$op =="|")) {
+    print("Running thresholds model")
+    r.thresholds <- lavaan::cfa(..., group.equal = c("thresholds"))
+  } else {
+    print("Running metric model")
+    r.metric<-lavaan::cfa(..., group.equal = "loadings")
+  }
+  print("Running scalar model")
   r.scalar<-lavaan::cfa(..., group.equal = c("loadings", "intercepts", "thresholds"))
   
-  #print(r.conf@call[-3])
+
   
-  out <- lavaan::lavTestLRT(r.conf, r.metric, r.scalar, model.names = c("Configural", "Metric", "Scalar"))
+  # Refit with different method if models didn't converge with defaults
+  if(!r.conf@optim$converged) {
+    print("Refitting configural")
+    r.conf  <-lavaan::cfa(..., optim.method = "L-BFGS-B")
+  }
+  if(!r.metric@optim$converged) {
+    print("Refitting metric")
+    r.metric<-lavaan::cfa(..., optim.method = "L-BFGS-B")
+  }
+  if(!r.scalar@optim$converged) {
+    print("Refitting scalar")
+    r.scalar<-lavaan::cfa(..., optim.method = "L-BFGS-B")
+  }
+  if(any(lavaan::parameterTable(r.conf)$op =="|"))
+    if(!r.thresholds@optim$converged) {
+    print("Refitting thresholds"); 
+    r.thresholds <- lavaan::cfa(..., group.equal = c("thresholds"), optim.method = "L-BFGS-B")
+  }
+  
+    
+  #print(r.conf@call[-3])
+
+  if(any(lavaan::parameterTable(r.conf)$op =="|"))  {
+    out <- try(lavaan::lavTestLRT(r.conf, r.thresholds, r.scalar, model.names = c("Configural", "Thresholds", "Scalar")))
+  } else {
+    out <- try(lavaan::lavTestLRT(r.conf, r.metric, r.scalar, model.names = c("Configural", "Metric", "Scalar")))
+  }
+     
+     
   #out <- out[,names(out)[c(4, 1, 5, 6)]]
   
   fit.mes.index <- c("cfi", "tli", "rmsea", "srmr")
   if( all( c("cfi.scaled", "rmsea.scaled")  %in% names(lavaan::fitMeasures(r.conf)))) 
     fit.mes.index <- append(fit.mes.index, c("cfi.scaled", "rmsea.scaled"))
   
-  out2<-t(sapply(list(r.conf, r.metric, r.scalar), lavaan::fitMeasures)[fit.mes.index,])
+  
+  model.list <- list(r.conf, r.metric, r.scalar)
+  if(any(lavaan::parameterTable(r.conf)$op =="|")) model.list <- list(r.conf, r.thresholds, r.scalar)
+  
+  out2<-t(sapply(model.list, function(x) 
+    if(x@optim$converged) lavaan::fitMeasures(x)[fit.mes.index] else rep(NA, length(fit.mes.index))))
   
   
   out2.2 <- apply(out2, 2, function(x) (c(NA, x[2]-x[1], x[3]-x[2]  )))
   colnames(out2.2)<- paste("diff.", toupper(colnames(out2.2)), sep="")
   out2.3 <- t(Reduce("rbind", lapply(1:ncol(out2), function(x) rbind(out2[,x], out2.2[,x]))))
   colnames(out2.3)<-toupper(as.vector(sapply(1:length(colnames(out2)), function(i) c(colnames(out2)[i], colnames(out2.2)[i]) )))
+  
   rownames(out2.3)<-c("Configural", "Metric", "Scalar")
+  if(any(lavaan::parameterTable(r.conf)$op =="|")) rownames(out2.3)<-c("Configural", "Thresholds", "Scalar")
   print(out)
   cat("\n")
   print(round(out2.3, 3), digits=3, row.names = TRUE, na.print = "" )
+  
+  invisible(out2.3)
 }
 
 

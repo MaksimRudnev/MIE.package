@@ -10,17 +10,26 @@
 
 
 groupwiseCFA <- function(model,  data, group, ..., out = c("fit", "models")) {
-  fit.list <- lapply(unique(data[, group]), function(gr) {
+  
+  if(length(data[, group])==1) {
+    group.names = na.omit(unique(data[, group][[1]])) 
+  } else {
+  group.names = na.omit(unique(data[, group]))
+  }
+  
+  fit.list <- lapply(group.names, function(gr) {
     print(gr)
     lavaan::cfa(model, data = data[data[, group]==gr, ], ...)
   })
   
-  names(fit.list)<- unique(data[, group])
+  names(fit.list)<- group.names
   
   tb.countrywise <- lapply(fit.list, function(x) data.frame(
     converged = x@optim$converged, 
     CFI=ifelse (x@optim$converged, fitMeasures(x)[c("cfi")],  NA),
     RMSEA=ifelse (x@optim$converged, fitMeasures(x)[c("rmsea")],NA),
+    CHI.sq = ifelse (x@optim$converged, fitMeasures(x)[c("chisq")],NA),
+    Pvalue = ifelse (x@optim$converged, fitMeasures(x)[c("pvalue")],NA),
     mod.ind=ifelse (x@optim$converged, 
                     paste(modindices(x, sort = T)[1,1:3], collapse = ""), ""),
     mod.ind.v=ifelse (x@optim$converged,  round(modindices(x, sort = T)[1,4]), ""),
@@ -33,7 +42,12 @@ groupwiseCFA <- function(model,  data, group, ..., out = c("fit", "models")) {
   
   if("models" %in% out) return(fit.list)
   if("fit" %in% out) { 
-    df_to_viewer(tb.countrywise1[order(tb.countrywise1$CFI, decreasing=T), c("CFI", "RMSEA")])
+    b=tb.countrywise1[order(tb.countrywise1$CFI, decreasing=T), c("CFI", "RMSEA", "CHI.sq", "Pvalue")]
+    b$CFI <- round(b$CFI, 2)
+    b$RMSEA <- round(b$RMSEA, 2)
+    b$CHI.sq <- round(b$CHI.sq, 2)
+    b$Pvalue <- round(b$Pvalue, 3)
+    print(b)
     invisible(tb.countrywise1)
   }
 }
@@ -107,14 +121,14 @@ lavTestScore_clean <- function(lavaan.fit,  ...) {
 #'   \item{_overall_}{Prints chi-sq, CFI, RMSEA, and SRMR }
 #'   \item{_neg.var_}{Checks if there are negative variances of latent variables, if yes, identifies the groups and prints them.}
 #'   \item{_mi_}{Aggregates modification indices across groups, finding the most impactful. Also prints the top part of sorted table of modification indices.}
-#'   \item{_constraints_}{Applies and prints \code{\link{lavTestScore_clean}}.}
+#'   \item{_constraints_}{ Optional. Applies and prints \code{\link{lavTestScore_clean}}.}
 #' }
 #'
 #' @md
 #'
 #' @export
 
-mgcfa_diagnose <- function(lavaan.model, output=c("overall", "neg.var", "mi", "constraints")) {
+mgcfa_diagnose <- function(lavaan.model, output=c("overall", "neg.var", "mi")) {
   require(magrittr)
   if("overall" %in% output) {
     # Print general info
