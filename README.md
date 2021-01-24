@@ -33,7 +33,7 @@ To start, install the `MIE` package and run `runMIE()` function.
 
 ### Input data
 
-Using arguments of function `runMIE()` it is possible to feed the app with the data objects stored in your R memory. For example: 
+Using arguments of function `runMIE()` it is possible to feed the app with the data objects stored in your R memory. For example:
 ```
 runMIE("F =~ impfree + iphlppl + ipsuces + ipstrgv", ess[, 4:15], group = "country")
 ```
@@ -88,12 +88,18 @@ Overall MGCFA is refitted each time the group is removed. Works properly only wh
 
 The circle should be circle, fix the coord_equal everywhere. Now can be fixed with + and - tools.
 
+
+Implicate effect sizes following :
+
+
+Nye, C. D., Bradburn, J., Olenick, J., Bialko, C., & Drasgow, F. (2018). How Big Are My Effects? Examining the Magnitude of Effect Sizes in Studies of Measurement Equivalence. Organizational Research Methods, 1094428118761122. https://doi.org/10.1177/1094428118761122
+
+Nye, C. D., & Drasgow, F. (2011). Effect size indices for analyses of measurement equivalence: Understanding the practical importance of differences between groups. Journal of Applied Psychology, 96(5), 966–980. https://doi.org/10.1037/a0022955
+
+Gunn, H. J., Grimm, K. J., & Edwards, M. C. (2019). Evaluation of Six Effect Size Measures of Measurement Non-Invariance for Continuous Outcomes. Structural Equation Modeling: A Multidisciplinary Journal, 1-12. https://doi.org/10.1080/10705511.2019.1689507
+
+
+
+Millsap, R. E., & Olivera-Aguilar, M. (2012). Investigating measurement invariance using confirmatory factor analysis. In R. H. Hoyle (Ed.), Handbook of structural equation modeling (pp. 380–392). New York, NY: Guilford. (implemented but poorly documented in semTools' partial invariance http://cran.irsn.fr/web/packages/semTools/vignettes/partialInvariance.pdf)
+
 -->
-
-
-
-
-
-
-
-

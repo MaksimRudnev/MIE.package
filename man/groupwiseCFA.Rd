@@ -4,7 +4,14 @@
 \alias{groupwiseCFA}
 \title{Run the same cfa within every group and extract fit indices}
 \usage{
-groupwiseCFA(model, data, group, ..., out = c("fit", "models"))
+groupwiseCFA(
+  model,
+  data,
+  group,
+  ...,
+  out = c("fit", "models"),
+  what = c("cfi", "rmsea", "chisq", "mod")
+)
 }
 \arguments{
 \item{model}{Model in lavaan syntax}
@@ -16,6 +23,8 @@ groupwiseCFA(model, data, group, ..., out = c("fit", "models"))
 \item{...}{Other arguments passed to lavaan::cfa}
 
 \item{out}{Character. "fit" returns some fit indices for every group; "models" list of entire fittted models.}
+
+\item{what}{Fit indices to print in case out="fit". Possible values: "cfi", "rmsea", "chisq", "mod" (parameter with the largest modification index and its value).}
 }
 \description{
 Run the same cfa within every group and extract fit indices

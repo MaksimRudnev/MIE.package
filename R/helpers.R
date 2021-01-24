@@ -4,12 +4,14 @@
 #' @param data The data
 #' @param group Character. Grouping variable.
 #' @param out Character. "fit" returns some fit indices for every group; "models" list of entire fittted models.
+#' @param what Fit indices to print in case out="fit". Possible values: "cfi", "rmsea", "chisq", "mod" (parameter with the largest modification index and its value).
 #' @param ... Other arguments passed to lavaan::cfa
 #'
 #' @export
 
 
-groupwiseCFA <- function(model,  data, group, ..., out = c("fit", "models")) {
+groupwiseCFA <- function(model,  data, group, ..., out = c("fit", "models"),
+                         what  = c("cfi", "rmsea", "chisq", "mod")) {
   
   if(length(data[, group])==1) {
     group.names = na.omit(unique(data[, group][[1]])) 
@@ -24,25 +26,33 @@ groupwiseCFA <- function(model,  data, group, ..., out = c("fit", "models")) {
   
   names(fit.list)<- group.names
   
-  tb.countrywise <- lapply(fit.list, function(x) data.frame(
-    converged = x@optim$converged, 
-    CFI=ifelse (x@optim$converged, fitMeasures(x)[c("cfi")],  NA),
-    RMSEA=ifelse (x@optim$converged, fitMeasures(x)[c("rmsea")],NA),
-    CHI.sq = ifelse (x@optim$converged, fitMeasures(x)[c("chisq")],NA),
-    Pvalue = ifelse (x@optim$converged, fitMeasures(x)[c("pvalue")],NA),
-    mod.ind=ifelse (x@optim$converged, 
-                    paste(modindices(x, sort = T)[1,1:3], collapse = ""), ""),
-    mod.ind.v=ifelse (x@optim$converged,  round(modindices(x, sort = T)[1,4]), ""),
-    stringsAsFactors = F))
+  if("fit" %in% out) { 
+  tb.countrywise <- lapply(fit.list, function(x) {
+    if(x@optim$converged) fm = fitMeasures(x)
+    if(x@optim$converged & "mod" %in% what) mi = modindices(x, sort = T)
+    
+    data.frame(
+      converged = x@optim$converged, 
+      CFI=      ifelse (x@optim$converged & "cfi" %in% what, fm["cfi"],  NA),
+      RMSEA=    ifelse (x@optim$converged & "rmsea" %in% what, fm["rmsea"],NA),
+      CHI.sq =  ifelse (x@optim$converged & "chisq" %in% what, fm["chisq"],NA),
+      Pvalue =  ifelse (x@optim$converged & "chisq" %in% what, fm["pvalue"],NA),
+      mod.ind=  ifelse (x@optim$converged & "mod" %in% what,  paste(mi[1,1:3], collapse = ""), ""),
+      mod.ind.v=ifelse (x@optim$converged & "mod" %in% what,  round(mi[1,4]), ""),
+      N = nobs(x),
+      stringsAsFactors = F)
+    
+    })
   tb.countrywise1 <- Reduce("rbind", tb.countrywise)
   rownames(tb.countrywise1) <- names(tb.countrywise)
   tb.countrywise1
   tb.countrywise1$mod.ind <-  gsub("~~",  " W ",  tb.countrywise1$mod.ind )
-  
+  }
   
   if("models" %in% out) return(fit.list)
   if("fit" %in% out) { 
-    b=tb.countrywise1[order(tb.countrywise1$CFI, decreasing=T), c("CFI", "RMSEA", "CHI.sq", "Pvalue")]
+    b=tb.countrywise1[order(tb.countrywise1$CFI, decreasing=T), 
+                      c("CFI", "RMSEA", "CHI.sq", "Pvalue")]
     b$CFI <- round(b$CFI, 2)
     b$RMSEA <- round(b$RMSEA, 2)
     b$CHI.sq <- round(b$CHI.sq, 2)
@@ -113,16 +123,16 @@ lavTestScore_clean <- function(lavaan.fit,  ...) {
 
 #' Quick diagnostics for multiple-group lavaan models
 #' @param lavaan.model Fitted lavaan multiple group model.
-#' @param output A character list of what diagnostics should be computed. See Details."
-#'
-#' @details Here are possible values for output:
-#'
-#' \describe{
+#' @param output A character list of what diagnostics should be computed. 
+#' #' \describe{
 #'   \item{_overall_}{Prints chi-sq, CFI, RMSEA, and SRMR }
 #'   \item{_neg.var_}{Checks if there are negative variances of latent variables, if yes, identifies the groups and prints them.}
 #'   \item{_mi_}{Aggregates modification indices across groups, finding the most impactful. Also prints the top part of sorted table of modification indices.}
 #'   \item{_constraints_}{ Optional. Applies and prints \code{\link{lavTestScore_clean}}.}
 #' }
+#'
+#' @details Doesn't return anything.
+#'
 #'
 #' @md
 #'

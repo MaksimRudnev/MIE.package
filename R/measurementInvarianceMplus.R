@@ -2,7 +2,7 @@
 #' 
 #' @param model Character. Formula in Mplus format, e.g. "Factor1 BY item1 item2 item3 item4; item4 WITH item3;", see example.
 #' @param group Character, name of the grouping variable.
-#' @param dat Data frame containing data. 
+#' @param data Data frame containing data. 
 #' @param categorical Character vector of variable names. Indicators that are binary or ordinal. Default is NULL.
 #' @param filename Optional custom filename
 #' @param Mplus_com  Sometimes you don't have a direct access to Mplus, so this argument specifies what to send to a system command line. Default value is "mplus".
@@ -126,3 +126,21 @@ tb.out = cbind(tb.out,
 tb.out
 
 }
+
+
+# HERE SHOULD BE approximateMIMplus
+# lav2mplus <- function(lavaan.syntax) {
+#   #mod.syntax= gsub("\\s+", " ", lavaan.syntax)
+#   mod.syntax= gsub("=~", " BY ", lavaan.syntax)
+#   mod.syntax= gsub(";", ";\n", lavaan.syntax)
+#   mod.syntax= gsub("\\+", " ", mod.syntax)
+#   mod.syntax= gsub("~~", " WITH ", mod.syntax)
+#   mod.syntax= gsub("#", " ! ", mod.syntax)
+#   return(mod.syntax)
+# }
+
+
+
+
+
+

@@ -11,7 +11,7 @@ requireNamespace("shinyWidgets", quietly = T)
 # Define UI for application that draws a histogram
 shinyUI(
   fluidPage(
-    useShinyjs(),
+    shinyjs::useShinyjs(),
     tags$head(tags$style(
       HTML('
            #sidebar {
@@ -139,7 +139,7 @@ shinyUI(
        
          column(4,        conditionalPanel(
            condition = "input.measure == 'fitincrement.metric'|input.measure == 'fitincrement.scalar'",
-           materialSwitch(inputId="netSwitch", label = "Use cutoffs?", value = FALSE, 
+           shinyWidgets::materialSwitch(inputId="netSwitch", label = "Use cutoffs?", value = FALSE, 
                           #onLabel = "Distances", offLabel = "Cutoffs"
            ))),
          column(4,

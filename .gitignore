@@ -4,4 +4,5 @@
 old/*
 papers
 rsconnect
-unnecessary
+unnecessary/*
+.gitignore

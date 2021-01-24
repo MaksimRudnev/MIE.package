@@ -18,13 +18,13 @@ measurementInvarianceMplus(
 
 \item{group}{Character, name of the grouping variable.}
 
+\item{data}{Data frame containing data.}
+
 \item{categorical}{Character vector of variable names. Indicators that are binary or ordinal. Default is NULL.}
 
 \item{filename}{Optional custom filename}
 
 \item{Mplus_com}{Sometimes you don't have a direct access to Mplus, so this argument specifies what to send to a system command line. Default value is "mplus".}
-
-\item{dat}{Data frame containing data.}
 }
 \description{
 Runs exact invariance tests in Mplus

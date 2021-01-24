@@ -6,73 +6,94 @@
 #' @param ... Formula, group, and all the other eligible arguments of \code{\link[lavaan]{cfa}} function.
 #'
 #' @export
-globalMI <- function(...) {
+globalMI <- function(..., omit = "") {
   
-  print("Running configural model")
-  r.conf<-lavaan::cfa(...)
-  
-  if(any(lavaan::parameterTable(r.conf)$op =="|")) {
-    print("Running thresholds model")
-    r.thresholds <- lavaan::cfa(..., group.equal = c("thresholds"))
-  } else {
-    print("Running metric model")
-    r.metric<-lavaan::cfa(..., group.equal = "loadings")
-  }
-  print("Running scalar model")
-  r.scalar<-lavaan::cfa(..., group.equal = c("loadings", "intercepts", "thresholds"))
-  
-
-  
-  # Refit with different method if models didn't converge with defaults
-  if(!r.conf@optim$converged) {
-    print("Refitting configural")
-    r.conf  <-lavaan::cfa(..., optim.method = "L-BFGS-B")
-  }
-  if(!r.metric@optim$converged) {
-    print("Refitting metric")
-    r.metric<-lavaan::cfa(..., optim.method = "L-BFGS-B")
-  }
-  if(!r.scalar@optim$converged) {
-    print("Refitting scalar")
-    r.scalar<-lavaan::cfa(..., optim.method = "L-BFGS-B")
-  }
-  if(any(lavaan::parameterTable(r.conf)$op =="|"))
-    if(!r.thresholds@optim$converged) {
-    print("Refitting thresholds"); 
-    r.thresholds <- lavaan::cfa(..., group.equal = c("thresholds"), optim.method = "L-BFGS-B")
-  }
-  
+  if(!"configural" %in% omit) {
+    print("Running configural model")
+    configural<-lavaan::cfa(...)
     
-  #print(r.conf@call[-3])
-
-  if(any(lavaan::parameterTable(r.conf)$op =="|"))  {
-    out <- try(lavaan::lavTestLRT(r.conf, r.thresholds, r.scalar, model.names = c("Configural", "Thresholds", "Scalar")))
-  } else {
-    out <- try(lavaan::lavTestLRT(r.conf, r.metric, r.scalar, model.names = c("Configural", "Metric", "Scalar")))
+    # Refit with different method if models didn't converge with defaults
+    if(!configural@optim$converged) {
+      print("Refitting configural")
+      configural  <-lavaan::cfa(..., optim.method = "L-BFGS-B")
+    }
+    
   }
-     
-     
-  #out <- out[,names(out)[c(4, 1, 5, 6)]]
   
+  thresholds.in.the.model <- any(lavaan::parameterTable(configural)$op =="|")
+  
+  if(thresholds.in.the.model & "thresholds" %in% omit) {
+    print("Running thresholds model")
+    thresholds <- lavaan::cfa(..., group.equal = c("thresholds"))
+    
+    if(!thresholds@optim$converged) {
+      print("Refitting thresholds") 
+      thresholds <- lavaan::cfa(..., group.equal = c("thresholds"), optim.method = "L-BFGS-B")
+    }
+    
+  } else if(!"metric" %in% omit){
+    
+    print("Running metric model")
+    metric<-lavaan::cfa(..., group.equal = "loadings")
+    
+    if(!metric@optim$converged) {
+      print("Refitting metric")
+      metric<-lavaan::cfa(..., optim.method = "L-BFGS-B")
+    }
+  }
+  if(!"scalar" %in% omit) {
+    print("Running scalar model")
+    scalar<-lavaan::cfa(..., group.equal = c("loadings", "intercepts", "thresholds"))
+    
+    if(!scalar@optim$converged) {
+      print("Refitting scalar")
+      scalar<-lavaan::cfa(..., optim.method = "L-BFGS-B")
+    }
+  }
+
+  # Summarize the results
+
+ # if(thresholds.in.the.model)  {
+    
+  mdls =  c("configural", "metric", "scalar")[(!c("configural", "metric", "scalar") %in% omit)]
+  if(thresholds.in.the.model) mdls = ifelse("configural" %in% mdls, 
+                                            append(mdls, "thresholds", after = 1), 
+                                            append(mdls, "thresholds"))
+  
+  out <- try(do.call(lavaan::lavTestLRT, lapply(mdls, as.name)))
+  
+     
+    
   fit.mes.index <- c("cfi", "tli", "rmsea", "srmr")
-  if( all( c("cfi.scaled", "rmsea.scaled")  %in% names(lavaan::fitMeasures(r.conf)))) 
-    fit.mes.index <- append(fit.mes.index, c("cfi.scaled", "rmsea.scaled"))
+  if( all( c("cfi.scaled", "tli.scaled", "rmsea.scaled")  %in% names( do.call(lavaan::fitMeasures, list(as.name(mdls[1])))))) 
+    fit.mes.index <- append(fit.mes.index, c("cfi.scaled", "tli.scaled", "rmsea.scaled"))
   
   
-  model.list <- list(r.conf, r.metric, r.scalar)
-  if(any(lavaan::parameterTable(r.conf)$op =="|")) model.list <- list(r.conf, r.thresholds, r.scalar)
+  model.list <- do.call(list, lapply(mdls, as.name))
   
   out2<-t(sapply(model.list, function(x) 
     if(x@optim$converged) lavaan::fitMeasures(x)[fit.mes.index] else rep(NA, length(fit.mes.index))))
   
   
-  out2.2 <- apply(out2, 2, function(x) (c(NA, x[2]-x[1], x[3]-x[2]  )))
-  colnames(out2.2)<- paste("diff.", toupper(colnames(out2.2)), sep="")
-  out2.3 <- t(Reduce("rbind", lapply(1:ncol(out2), function(x) rbind(out2[,x], out2.2[,x]))))
-  colnames(out2.3)<-toupper(as.vector(sapply(1:length(colnames(out2)), function(i) c(colnames(out2)[i], colnames(out2.2)[i]) )))
+  # out2.2 <- apply(out2, 2, function(x) (c(NA, x[2]-x[1], x[3]-x[2]  )))
+  # colnames(out2.2)<- paste("diff.", toupper(colnames(out2.2)), sep="")
+  # out2.3 <- t(Reduce("rbind", lapply(1:ncol(out2), function(x) rbind(out2[,x], out2.2[,x]))))
+  # colnames(out2.3)<-toupper(as.vector(sapply(1:length(colnames(out2)), function(i) c(colnames(out2)[i], colnames(out2.2)[i]) )))
+
+  out2.3 = Reduce("cbind", lapply(1:ncol(out2), function(column) {
+    a= data.frame(
+      out2[,column], 
+      diff=sapply(1:length(out2[,column]), 
+                  function(x) if(x==1) NA else out2[x,column] - out2[x-1,column])
+    )
+    
+    names(a) <- c(colnames(out2)[column], paste0("diff.", colnames(out2)[column] ))
+    a
+  }))
   
-  rownames(out2.3)<-c("Configural", "Metric", "Scalar")
-  if(any(lavaan::parameterTable(r.conf)$op =="|")) rownames(out2.3)<-c("Configural", "Thresholds", "Scalar")
+  #rownames(out2.3)<-c("Configural", "Metric", "Scalar")
+  #if(any(lavaan::parameterTable(r.conf)$op =="|")) rownames(out2.3)<-c("Configural", "Thresholds", "Scalar")
+  rownames(out2.3) <- mdls
   print(out)
   cat("\n")
   print(round(out2.3, 3), digits=3, row.names = TRUE, na.print = "" )
@@ -122,6 +143,7 @@ pairs_of_groups <- function(variable) {
 #' @param pairs.of.groups Full list of pairs of groups, used in shiny only.
 #' @param message Notification in shiny.
 #' @param shiny If it is executed in shiny environment.
+#' @param signed Only for DMACS, if the signed version should be used. See Nye et al 2019
 #' @param ... Arguments passed to lavaan 'cfa' function.
 # @example # pairwiseFit(model="F =~ impfree + iphlppl + ipsuces + ipstrgv", data = ess6, group = "cntry", "loadings")
 #' 
@@ -135,7 +157,8 @@ pairwiseFit <- function(model,
                         constraints=c(""), 
                         pairs.of.groups=NULL, 
                         message="Fitting pairwise lavaan models",
-                        shiny=FALSE
+                        shiny=FALSE,
+                        signed = F
                         , ...
                         
 ) {
@@ -145,7 +168,8 @@ pairwiseFit <- function(model,
   
   colnames(data)[1]<-"cntry"
   
-  runPairwiseModels <- function() {
+  runPairwiseModels <- function(...) {
+    
     model.lav<- lavaan::cfa(model, data=data[data$cntry==pairs.of.groups[1,1] | 
                                        data$cntry==pairs.of.groups[2,2],],
                     group="cntry", group.equal=constraints, ...
@@ -154,10 +178,23 @@ pairwiseFit <- function(model,
     #print("LAV CALL")
     #print(model.lav@call)
     
-    # FN is a number of fit indices currently provided by lavaan  (currently 41)
-    FN = length(lavaan::fitmeasures(model.lav)) 
+    # FN is a number of fit indices currently provided by lavaan  (currently 41) + 1 for dmacs
+    FN = length(lavaan::fitmeasures(model.lav)) + 1
     
-    if(lavaan::lavInspect(model.lav, "converged")) mod<- lavaan::fitmeasures(model.lav) else mod <- rep(999, FN)
+    if(lavaan::lavInspect(model.lav, "converged")) {
+      mod<- lavaan::fitmeasures(model.lav) 
+      # add dmacs
+      mod<- c(mod, average.dmacs =  mean(dmacs_lavaan(model.lav, signed = F), na.rm=T))
+      
+      dmacs.signed.list<-list()
+      if(signed) dmacs.signed.list[[1]] <- dmacs_lavaan(model.lav, signed = T)
+      
+      
+      
+    } else { 
+      mod <- rep(999, FN)
+      mod <- c(mod, average.dmacs = 999)
+    }
     
     
     mod<-matrix( c(mod, rep(0,FN*(nrow(pairs.of.groups)-1))), nrow=FN, dimnames=list(names(mod), NULL))
@@ -169,15 +206,43 @@ pairwiseFit <- function(model,
     for(x in 2:nrow(pairs.of.groups)) {
       model.lav<- lavaan::cfa(model, data=data[data$cntry==pairs.of.groups[x,1] | 
                                          data$cntry==pairs.of.groups[x,2],],
-                      group="cntry", group.equal=constraints, ... # extra.options
+                      group="cntry", group.equal=constraints#, ... # extra.options
       )
       
       #If converged, record fitmeasure; if not converged add a missing sign 999.
-      if(lavaan::lavInspect(model.lav, "converged")) mod[,x]<- lavaan::fitmeasures(model.lav) else mod[,x]<- rep(999, FN)
+      if(lavaan::lavInspect(model.lav, "converged")) {
+        mod[,x]<- c(lavaan::fitmeasures(model.lav),
+                    average.dmacs = 
+                      mean(dmacs_lavaan(model.lav, signed = F),na.rm=T))
+        
+        
+        if(signed) dmacs.signed.list[[x]] <- dmacs_lavaan(model.lav, signed = T)
+        
+        
+        
+      } else {
+        mod[,x]<- rep(999, FN)
+      }
+        
       
       #Save non-positive definite status
       
       non.positive[[x]]<-lavaan::lavInspect(model.lav, "post.check")==FALSE
+      
+      # # add dmacs
+      # if(!non.positive[[x]]) {
+      #   mod[,x]<- cbind(mod[,x], 
+      #                   dmacs = 
+      #                     mean(
+      #                       dmacs::lavaan_dmacs(model.lav, 
+      #                         RefGroup=lavaan::lavInspect(model.lav, "group.label")[1],  
+      #                         "pooled" )$DMACS,
+      #                       na.rm=T)
+      #                   )
+      # } else {  
+      #   mod[,x]<- cbind(mod[,x], dmacs = NA)
+      # }
+      
       
       
      if(shiny) {
@@ -208,6 +273,8 @@ pairwiseFit <- function(model,
     
     colnames(mod)<-apply(pairs.of.groups, 1, paste, collapse="_")
     attr(mod, "model.formula") <- model
+    if(signed) attr(mod, "dmacs.signed.list")<-  dmacs.signed.list
+     
     return(mod)
     
   }
@@ -498,6 +565,7 @@ incrementalFit <- function(..., level="metric") {
     names(detailed)<-rownames(fit.decrease)
     
     }    else  if(level=="intercepts.scalar") {
+      
       cat("Fitting equal-intercepts models\n")
       int.only = pairwiseFit(..., constraints = c("intercepts", "thresholds"))
       cat("\nFitting scalar models\n")
@@ -505,7 +573,8 @@ incrementalFit <- function(..., level="metric") {
       fit.decrease <- abs(int.only - scalar)
       detailed<-lapply(rownames(fit.decrease), function(f) cbind(int.only=int.only[f,], scalar=scalar[f,], fit.decrease=fit.decrease[f, ])  )
       names(detailed)<-rownames(fit.decrease)
-    }
+      
+    } 
   
   
  out <- list(detailed=detailed, bunch=fit.decrease)
@@ -527,11 +596,14 @@ return(out)
 #' @seealso \code{\link{plotCutoff}}
 #' @export
 plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop = NULL, dist.method = NULL, shiny = FALSE) {
+  
   pam1 = function(x, k){list(cluster = cluster::pam(x,k, diss = T, cluster.only=TRUE))}
   
   
 
-    if(class(measures)=="incrementalFit") {
+    if("incrementalFit" %in% class(measures) | "average.dmacs" %in% fit.index) {
+      
+      if(fit.index=="average.dmacs") measures <- list(bunch=measures)
 
       dist1 <- reshape2::dcast(rbind( cbind(get_pairs(measures$bunch), measures$bunch[fit.index,]),
                             cbind(`colnames<-`(get_pairs(measures$bunch)[,2:1], c("V1", "V2")), measures$bunch[fit.index,])
@@ -566,7 +638,7 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
       mds1 <- stats::cmdscale(dist2 * 1, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE)
       
       
-    } else if( any(class(measures) %in% c("covariances", "correlations", "MGCFAparameters")) ) {
+    } else if( any(c("covariances", "correlations", "MGCFAparameters")  %in% class(measures)) ) {
        
       # remove dropped groups
       if(!is.null(drop)) measures <- measures[!rownames(measures) %in% drop, ]
@@ -590,9 +662,68 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
       
       #clusters <- stats::kmeans(measures, n.clusters)$cluster
       clusters <- cluster::pam(dist1, diss =T, k = n.clusters)$clustering
+      
+    } else if (fit.index == "signed.dmacs"){
+      
+      dmacs.signed.list <- attr(measures, "dmacs.signed.list")
+      
+      dmacs.per.parameter <- lapply(1:nrow(dmacs.signed.list[[1]]), function(x) {
+        par.across.groups <- sapply(dmacs.signed.list, function(y) na.omit(y[x,]) )
+      })
+      
+            
+   distList <- lapply(1:length(dmacs.per.parameter), function(i) {
+     
+         dist1 <- reshape2::dcast(rbind( 
+                                   cbind(get_pairs(measures), 
+                                          x=dmacs.per.parameter[[i]]),
+                                    cbind(`colnames<-`(get_pairs(measures)[,2:1], c("V1", "V2")), 
+                                          x=dmacs.per.parameter[[i]])
+                                   ), 
+                                 V2 ~ V1, value.var = "x")
+          row.names(dist1)<- dist1$V2
+          dist1$V2 <- NULL
+          dist1<-as.matrix(dist1)
+          diag(dist1)<-rep(0, nrow(dist1))
+  
+        # remove dropped groups
+         if(!is.null(drop)) dist1 <- dist1[!rownames(dist1) %in% drop, !(colnames(dist1) %in% drop) ]
+        
+        # new line below converting raw fit measures to distances with varying method
+         dist2 <- stats::dist(dist1, method = ifelse(is.null(dist.method), "maximum", dist.method   ))
+   })
+         
+   dist2 = Reduce("+", distList)/length(distList)
+         
+          
+         if(n.clusters == "auto") {
+           
+           set.seed(1234)
+           gskmn = cluster::clusGap(as.matrix(dist2), FUN=pam1, K.max = attr(dist2, "Size")-1, B = 50, verbose = F)
+          n.clusters <- cluster::maxSE(f = gskmn$Tab[, "gap"], SE.f = gskmn$Tab[, "SE.sim"], method = "Tibs2001SEmax", SE.factor = 1)
+          if(shiny) {
+            #updateSliderInput(session, "nclusters", max = groups - 1, value = n.clusters)
+          } else {
+            cat("\nOptimal number of clusters is ", n.clusters)
+          }
+        }
+      #   
+      #   
+      #   #clusters <- stats::kmeans(dist1, n.clusters)$cluster
+        clusters <- cluster::pam(dist2, diss =T, k = n.clusters)$clustering
+      #   
+         mds1 <- stats::cmdscale(dist2 * 1, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE)
+      #   
+      #   
+      #   
+      #   
+      # })
+      
+      #Reduce("+", dmacs.signed.list) / length(dmacs.signed.list)
+      
     } else {
       
-      stop("This function can accept only objects of classes 'incrementalFit', 'MGCFAparameters', 'covariances', and 'correlations'. ")
+      stop("This function can accept only objects of classes 'incrementalFit', 'MGCFAparameters', 'covariances', and 'correlations', or fit.index='signed.dmacs' ")
       
     }
     
@@ -627,7 +758,7 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
  
  
  # Add the circle
- if(class(measures)=="incrementalFit" & (fit.index == "cfi" | fit.index == "rmsea")) {
+ if(any(class(measures)=="incrementalFit") & (fit.index == "cfi" | fit.index == "rmsea")) {
    
   
    r = ifelse(fit.index == "cfi", .005, .0075)
@@ -641,7 +772,7 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
    ), col="lightgray", linetype="dashed")
    g<-g+labs(caption="The circle has diameter .01, meaning the increment \nin the fit index is within interval recommended by Chen")
    
- } else if (class(measures)=="MGCFAparameters") {
+ } else if ( "MGCFAparameters" %in% class(measures)) {
    
    fits<-attr(measures, "fit")[c("cfi", "rmsea", "srmr")]
    
@@ -801,4 +932,105 @@ g
 # p <- recordPlot()
 # plot.new() ## clean up device
 # p
+
+
+# Effects and DMACs #####
+
+
+#'Dmacs 
+#' @description  Simply a wrapper arounnd dmacs::lavaan_dmacs() function
+#' @param lav.model fitted lavaan model
+dmacs <- function(lav.model) {
+  as.matrix(
+  dmacs::lavaan_dmacs(configural, 
+                      RefGroup=lavaan::lavInspect(configural, "group.label")[1], 
+                      "pooled" )$DMACS
+  )
+}
+
+
+dmacs.unsigned <- function(LambdaR, ThreshR, LambdaF, ThreshF, MeanF, VarF, SD) {
+  
+  expected_value <- function(Lambda, Thresh, Theta) { Thresh + Lambda * Theta }
+  z <- seq(-5, 5, .001)
+  
+  Y_j1 = expected_value(LambdaF, ThreshF, MeanF + z * sqrt(VarF))
+  Y_j2 = expected_value(LambdaR, ThreshR, MeanF + z * sqrt(VarF))
+  
+  sqrt(sum((Y_j1- Y_j2)^2 * dnorm(z) * .001 * sqrt(VarF)))/SD
+}
+
+dmacs.signed <- function(LambdaR, ThreshR, LambdaF, ThreshF, MeanF, VarF, SD) {
+  
+  expected_value <- function(Lambda, Thresh, Theta) { Thresh + Lambda * Theta }
+  z <- seq(-5, 5, .001)
+  
+  Y_j1 = expected_value(LambdaF, ThreshF, MeanF + z * sqrt(VarF))
+  Y_j2 = expected_value(LambdaR, ThreshR, MeanF + z * sqrt(VarF))
+  
+  sum((Y_j1- Y_j2) * dnorm(z) * .001 * sqrt(VarF))/SD
+}
+
+
+
+
+
+dmacs_lavaan <- function(fit, signed = F, pooled.sd = T, RefGroup = 1) {
+  
+  if(class(fit)!='lavaan') warning("'fit' argument should be lavaan fitted object!")
+  est <- lapply(lavaan::lavInspect(fit, "est"), function(x) x[ c("lambda","alpha", "psi", "nu" )])
+
+  Groups <- names(lavaan::lavInspect(fit, "est"))
+   #which(Groups == RefGroup)
+  
+  if(pooled.sd) {
+    
+    data.ref.group = lavaan::lavInspect(fit, "data")[[RefGroup]]
+    
+    refsd <- apply(data.ref.group, 2, sd, na.rm = TRUE)
+    refn <- colSums(!is.na(data.ref.group))
+    focsd <- apply(data.ref.group, 2, sd, na.rm = TRUE)
+    focn <- colSums(!is.na(data.ref.group))
+    
+    SDs <-  ((focn - 1) * focsd + (refn - 1) * refsd) / ((focn -  1) + (refn - 1))
+    
+  } else {
+    
+    SDs <- apply(lavaan::lavInspect(fit, "data")[[-RefGroup]], 2, sd,  na.rm = TRUE)
+    
+  }
+  
+  DMACS <- mapply(function(...) if (signed) dmacs.signed(...) else dmacs.unsigned(...),
+                  est[[RefGroup]]$lambda,
+                  est[[RefGroup]]$nu,
+                  est[[-RefGroup]]$lambda,
+                  est[[-RefGroup]]$nu,
+                  est[[-RefGroup]]$alpha,
+                  diag(est[[-RefGroup]]$psi),
+                  SDs)
+  
+  DMACS= matrix(DMACS, nrow= dim(est[[RefGroup]]$lambda)[1], ncol =  dim(est[[RefGroup]]$lambda)[2])
+  rownames(DMACS) <- rownames(est[[RefGroup]]$lambda)
+  colnames(DMACS) <- colnames(est[[RefGroup]]$lambda)
+  DMACS[est[[RefGroup]]$lambda==0] <- NA
+  DMACS
+  
+}
+
+
+
+
+#' Pairwise DMACS
+#' @param ... arguments passed to pairwiseFit()
+#'
+#' @export
+pairwiseDmacs <- function(..., signed = T) {
+  
+  
+  cat("Fitting configural models\n")
+  configural = pairwiseFit(..., constraints = c(""))
+  fit.decrease <- configural
+  detailed<-configural
+  
+}
 

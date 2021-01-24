@@ -9,18 +9,17 @@ mgcfa_diagnose(lavaan.model, output = c("overall", "neg.var", "mi"))
 \arguments{
 \item{lavaan.model}{Fitted lavaan multiple group model.}
 
-\item{output}{A character list of what diagnostics should be computed. See Details."}
+\item{output}{A character list of what diagnostics should be computed.
+#' \describe{
+\item{\emph{overall}}{Prints chi-sq, CFI, RMSEA, and SRMR }
+\item{\emph{neg.var}}{Checks if there are negative variances of latent variables, if yes, identifies the groups and prints them.}
+\item{\emph{mi}}{Aggregates modification indices across groups, finding the most impactful. Also prints the top part of sorted table of modification indices.}
+\item{\emph{constraints}}{ Optional. Applies and prints \code{\link{lavTestScore_clean}}.}
+}}
 }
 \description{
 Quick diagnostics for multiple-group lavaan models
 }
 \details{
-Here are possible values for output:
-
-\describe{
-\item{\emph{overall}}{Prints chi-sq, CFI, RMSEA, and SRMR }
-\item{\emph{neg.var}}{Checks if there are negative variances of latent variables, if yes, identifies the groups and prints them.}
-\item{\emph{mi}}{Aggregates modification indices across groups, finding the most impactful. Also prints the top part of sorted table of modification indices.}
-\item{\emph{constraints}}{ Optional. Applies and prints \code{\link{lavTestScore_clean}}.}
-}
+Doesn't return anything.
 }
