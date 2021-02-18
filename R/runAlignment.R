@@ -46,14 +46,19 @@ runAlignment <- function(
   sim.reps = 500,
   Mplus_com = "mplus",
   path = getwd(),
-  summaries = FALSE
+  summaries = FALSE,
+  estimator="MLR",
+  listwise = "OFF"
 ) {
   
+  # set working dirs ####
   oldwd <- getwd()
   setwd(path)
   
+  
   message("Creating input for free alignment.\n")
   
+  #clean the model syntax, derive variables included ####
   var.list <- strsplit(model, ";|\n") [[1]]
   var.list <- gsub("\\s+", " ",  var.list)
   var.list <-   var.list[!var.list==""]
@@ -68,10 +73,6 @@ runAlignment <- function(
   #var.list <- paste(unique(unlist(var.list)), collapse=" ")
   #var.list <- strsplit(var.list, " ")[[1]]
   #var.list <-   var.list[!var.list==""]
-  
-  
-
-  
   # var.list <- paste0("; ", model, " ;")
   # var.list<- gsub("\n", ";", var.list)
   # var.list <- paste(sapply(var.list, function(i) sub(".*BY *(.*?) *;.*", "\\1", i)), collapse=" ")
@@ -88,6 +89,9 @@ runAlignment <- function(
     
   }
   
+  
+  # Writing data file ####
+    
   #require(MplusAutomation)
   #inp <- capture.output(prepareMplusData(d,  "mplus_temp.tab"))
   
@@ -98,8 +102,12 @@ runAlignment <- function(
   list.of.groups = unique(as.matrix(d[,1]))
   ngroups = length(list.of.groups)
   
+  
+# Making up the syntax for alignment ####
+# 
   inp <- c("DATA:","\n",
            "   file = 'mplus_temp.tab';", "\n",
+           "   LISTWISE = ", listwise, ";\n",
            " VARIABLE:", "\n",
            "   names =", gsub("\\.", "_", group), " ", paste(gsub("\\.", "_", var.list), collapse="\n"), ";\n",
            "   missing = .;", "\n",
@@ -115,8 +123,9 @@ runAlignment <- function(
            
            "ANALYSIS:\n",
            "  type = mixture;\n",
-           "  estimator = ml;\n",
+           "  estimator = ", estimator, ";\n",
            "  alignment =", kind = "", ";\n", 
+           "  processors =", processors, ";\n",
            ifelse(any(is.null(categorical)),
                   "\n",  
                   "  algorithm = integration;\n\n"),
@@ -138,9 +147,13 @@ runAlignment <- function(
   
   inp["kind"]<-"FREE"
   cat(inp, file = "free.inp", sep="")
+  
+  # Running free alignment ####
   message("Run free in Mplus.")
   trash <- system(paste(Mplus_com, "free.inp"))
   
+  
+  # Reading free, making a fixed alignment syntax ####
   
   outFree <- paste(readLines("free.out"), collapse = "\n") 
   if(grepl("TO AVOID MISSPECIFICATION USE THE GROUP WITH VALUE", outFree)) {
@@ -155,12 +168,14 @@ runAlignment <- function(
   
   inp["kind"]<-paste0("FIXED(", refGroup, ")")
   cat(inp, file = "fixed.inp", sep="")
-  message("Run fixed in Mplus.")
+  
+  message("Running fixed in Mplus.")
   trash <- system(paste(Mplus_com, "fixed.inp"))
   
-  # Creating simulations
+  # Creating simulations ####
   if(!is.null(sim.samples)) {
     
+    # ..extracting population values from fixed alignmnetn output ####
     outFixed <- paste(readLines("fixed.out"), collapse = "\n") 
     
     
@@ -185,7 +200,7 @@ runAlignment <- function(
     }
     
     
-    
+    #..writing code for simulations####
     
     for(x in sim.samples) { 
       code <- c("MONTECARLO:",
@@ -203,9 +218,11 @@ runAlignment <- function(
                 
                 
                 "ANALYSIS:",
-                " TYPE = MIXTURE;",
-                " ESTIMATOR = ml;",
-                " alignment = fixed;\n",
+                "  TYPE = MIXTURE;",
+                "  alignment = ", "FIXED(", refGroup, ");\n",
+                "  estimator = ", estimator, ";\n",
+                "  processors =", processors, ";\n",
+                
                 ifelse(any(is.null(categorical)),
                        "\n",  
                        " algorithm = integration;\n\n"),
