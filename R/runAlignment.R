@@ -48,7 +48,8 @@ runAlignment <- function(
   path = getwd(),
   summaries = FALSE,
   estimator="MLR",
-  listwise = "OFF"
+  listwise = "OFF",
+  processors=2
 ) {
   
   # set working dirs ####

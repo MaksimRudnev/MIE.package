@@ -6,7 +6,7 @@
 #' @param ... Formula, group, and all the other eligible arguments of \code{\link[lavaan]{cfa}} function.
 #'
 #' @export
-globalMI <- function(..., omit = "") {
+globalMI <- function(..., chi.sq=FALSE, omit = "") {
   
   if(!"configural" %in% omit) {
     print("Running configural model")
@@ -64,15 +64,21 @@ globalMI <- function(..., omit = "") {
   
      
     
-  fit.mes.index <- c("cfi", "tli", "rmsea", "srmr")
+  fit.mes.index = c("cfi", "tli", "rmsea", "srmr", "chisq", "df")
   if( all( c("cfi.scaled", "tli.scaled", "rmsea.scaled")  %in% names( do.call(lavaan::fitMeasures, list(as.name(mdls[1])))))) 
-    fit.mes.index <- append(fit.mes.index, c("cfi.scaled", "tli.scaled", "rmsea.scaled"))
+    fit.mes.index <- append(fit.mes.index, c("cfi.scaled", "tli.scaled", "rmsea.scaled", "chisq.scaled"))
+  
+
   
   
   model.list <- do.call(list, lapply(mdls, as.name))
   
   out2<-t(sapply(model.list, function(x) 
-    if(x@optim$converged) lavaan::fitMeasures(x)[fit.mes.index] else rep(NA, length(fit.mes.index))))
+    if(x@optim$converged) 
+      lavaan::fitMeasures(x)[fit.mes.index] 
+    else 
+      rep(NA, length(fit.mes.index))
+    ))
   
   
   # out2.2 <- apply(out2, 2, function(x) (c(NA, x[2]-x[1], x[3]-x[2]  )))
@@ -94,9 +100,27 @@ globalMI <- function(..., omit = "") {
   #rownames(out2.3)<-c("Configural", "Metric", "Scalar")
   #if(any(lavaan::parameterTable(r.conf)$op =="|")) rownames(out2.3)<-c("Configural", "Thresholds", "Scalar")
   rownames(out2.3) <- mdls
+  
+  if(chi.sq) {
+    print(fit.mes.index)
+    chi=ifelse(any(fit.mes.index=="chisq.scaled"), "chisq.scaled", "chisq")
+    out2.3$chisq.df <- paste0(round(out2.3[,chi],1), "(", out2.3[,"df"], ")")
+    out2.3[,chi] <- NULL        
+    out2.3[,"df"]  <- NULL
+    out2.3
+  } else {
+    
+    out2.3[,"chisq.scaled"]<- NULL
+    out2.3[,"chisq"]       <- NULL
+    out2.3[,"df"]          <- NULL
+    
+  }
+    
   print(out)
   cat("\n")
-  print(round(out2.3, 3), digits=3, row.names = TRUE, na.print = "" )
+  print(#round(out2.3, 3), 
+        out2.3,
+        digits=3, row.names = TRUE, na.print = "" )
   
   invisible(out2.3)
 }
