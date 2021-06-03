@@ -187,20 +187,27 @@ pairwiseFit <- function(model,
                         
 ) {
   
-  if(is.null(pairs.of.groups)) pairs.of.groups <- MIE:::pairs_of_groups(data[[group]])
+  if(is.null(pairs.of.groups)) 
+    pairs.of.groups <- MIE:::pairs_of_groups(data[[group]])
+  
+  # rearrange columns so that the group variable goes first
   data=data[,c(group, colnames(data)[colnames(data)!=group])]
   
   colnames(data)[1]<-"cntry"
   
   runPairwiseModels <- function(...) {
     
-    model.lav<- lavaan::cfa(model, data=data[data$cntry==pairs.of.groups[1,1] | 
+    model.lav<- lavaan::cfa(model, 
+                            data=data[data$cntry==pairs.of.groups[1,1] | 
                                        data$cntry==pairs.of.groups[2,2],],
-                    group="cntry", group.equal=constraints, ...
+                    group="cntry",
+                    #group=group, 
+                    group.equal=constraints
+                    , ...
     )
     
-    #print("LAV CALL")
-    #print(model.lav@call)
+    print("LAV CALL")
+    print(model.lav@call)
     
     # FN is a number of fit indices currently provided by lavaan  (currently 41) + 1 for dmacs
     FN = length(lavaan::fitmeasures(model.lav)) + 1
@@ -208,10 +215,10 @@ pairwiseFit <- function(model,
     if(lavaan::lavInspect(model.lav, "converged")) {
       mod<- lavaan::fitmeasures(model.lav) 
       # add dmacs
-      mod<- c(mod, average.dmacs =  mean(dmacs_lavaan(model.lav, signed = F), na.rm=T))
+      mod<- c(mod, average.dmacs =  mean(MIE:::dmacs_lavaan(model.lav, signed = F), na.rm=T))
       
       dmacs.signed.list<-list()
-      if(signed) dmacs.signed.list[[1]] <- dmacs_lavaan(model.lav, signed = T)
+      if(signed) dmacs.signed.list[[1]] <- MIE:::dmacs_lavaan(model.lav, signed = T)
       
       
       
@@ -228,19 +235,23 @@ pairwiseFit <- function(model,
     
     # Uses 'for' instead of 'sapply' in order to show the progress bar
     for(x in 2:nrow(pairs.of.groups)) {
-      model.lav<- lavaan::cfa(model, data=data[data$cntry==pairs.of.groups[x,1] | 
+      model.lav<- lavaan::cfa(model, 
+                              data=data[data$cntry==pairs.of.groups[x,1] | 
                                          data$cntry==pairs.of.groups[x,2],],
-                      group="cntry", group.equal=constraints#, ... # extra.options
+                      group="cntry", 
+                      #group = group,
+                      group.equal=constraints
+                      , ... # extra.options
       )
       
       #If converged, record fitmeasure; if not converged add a missing sign 999.
       if(lavaan::lavInspect(model.lav, "converged")) {
         mod[,x]<- c(lavaan::fitmeasures(model.lav),
                     average.dmacs = 
-                      mean(dmacs_lavaan(model.lav, signed = F),na.rm=T))
+                      mean(MIE:::dmacs_lavaan(model.lav, signed = F),na.rm=T))
         
         
-        if(signed) dmacs.signed.list[[x]] <- dmacs_lavaan(model.lav, signed = T)
+        if(signed) dmacs.signed.list[[x]] <- MIE:::dmacs_lavaan(model.lav, signed = T)
         
         
         
@@ -305,12 +316,12 @@ pairwiseFit <- function(model,
   
     if(shiny) {
   withProgress(message = message, value = 0, {   #Create progress bar
-    mod <- runPairwiseModels()
+    mod <- runPairwiseModels(...)
     mod
   }) #close progress bar 
     } else {
       pb <- utils::txtProgressBar(title="Fitting pairwise models", style=3)
-      mod <- runPairwiseModels()
+      mod <- runPairwiseModels(...)
       mod
     }
 }
@@ -558,7 +569,12 @@ incrementalFit <- function(..., level="metric") {
     cat("\nFitting metric models\n")
   metric = pairwiseFit(..., constraints = c("loadings"))
   fit.decrease <- abs(configural - metric)
-  detailed<-lapply(rownames(fit.decrease), function(f) cbind(configural=configural[f,], metric=metric[f,], fit.decrease=fit.decrease[f, ])  )
+  detailed<-lapply(rownames(fit.decrease), 
+                   function(f) 
+                     cbind(configural=configural[f,], 
+                           metric=metric[f,], 
+                           fit.decrease=fit.decrease[f, ])  
+                   )
   names(detailed)<-rownames(fit.decrease)
   
   } else  if(level=="scalar") {
