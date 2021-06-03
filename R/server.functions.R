@@ -206,8 +206,8 @@ pairwiseFit <- function(model,
                     , ...
     )
     
-    print("LAV CALL")
-    print(model.lav@call)
+    #print("LAV CALL")
+    #print(model.lav@call)
     
     # FN is a number of fit indices currently provided by lavaan  (currently 41) + 1 for dmacs
     FN = length(lavaan::fitmeasures(model.lav)) + 1
