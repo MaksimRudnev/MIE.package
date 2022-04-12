@@ -2,127 +2,109 @@
 
 #' Test for measureent invariance in three steps
 #' @description Computes configural, metric, and scala invariance models and compares them.
-#' 
+#' @param chi.sq Logical, if chi-square should be reported.
+#' @param omit Character (vector). Which model should be omitted. Possible values "configural", "metric", "scalar".
 #' @param ... Formula, group, and all the other eligible arguments of \code{\link[lavaan]{cfa}} function.
 #'
 #' @export
 globalMI <- function(..., chi.sq=FALSE, omit = "") {
   
-  if(!"configural" %in% omit) {
-    print("Running configural model")
-    configural<-lavaan::cfa(...)
+  fake.mdl <- lavaan::cfa(..., do.fit=F)
+  
+  if(any(lavaan::parameterTable(fake.mdl)$op =="|")) {
+    message("There are thresholds in the model")
     
-    # Refit with different method if models didn't converge with defaults
-    if(!configural@optim$converged) {
-      print("Refitting configural")
-      configural  <-lavaan::cfa(..., optim.method = "L-BFGS-B")
-    }
+    models.to.run <- c("configural", "thresholds", "scalar")[(!c("configural", "thresholds", "scalar") %in% omit)]
+    
+  } else {
+    
+    models.to.run <- c("configural", "metric", "scalar")[(!c("configural", "metric", "scalar") %in% omit)]
     
   }
   
-  thresholds.in.the.model <- any(lavaan::parameterTable(configural)$op =="|")
+  mdls <- lapply(setNames(models.to.run, nm=models.to.run), function(m) {
+    
+    constraints <- switch(m, 
+                          configural = "",
+                          metric = "loadings",
+                          thresholds = "thresholds", 
+                          scalar = c("loadings", "intercepts", "thresholds"))
+ 
+    print(paste("Running", m, "model"))
+    m.fit <- lavaan::cfa(..., group.equal = constraints)
+    
+    if(!m.fit@optim$converged) {
+      print("Refitting with L-BFGS-B") 
+      m.fit <- lavaan::cfa(..., 
+                           group.equal = constraints, 
+                           optim.method = "L-BFGS-B")
+    }
+    
+    return(m.fit)
+    
+  })
+    
   
-  if(thresholds.in.the.model & "thresholds" %in% omit) {
-    print("Running thresholds model")
-    thresholds <- lavaan::cfa(..., group.equal = c("thresholds"))
-    
-    if(!thresholds@optim$converged) {
-      print("Refitting thresholds") 
-      thresholds <- lavaan::cfa(..., group.equal = c("thresholds"), optim.method = "L-BFGS-B")
-    }
-    
-  } else if(!"metric" %in% omit){
-    
-    print("Running metric model")
-    metric<-lavaan::cfa(..., group.equal = "loadings")
-    
-    if(!metric@optim$converged) {
-      print("Refitting metric")
-      metric<-lavaan::cfa(..., optim.method = "L-BFGS-B")
-    }
-  }
-  if(!"scalar" %in% omit) {
-    print("Running scalar model")
-    scalar<-lavaan::cfa(..., group.equal = c("loadings", "intercepts", "thresholds"))
-    
-    if(!scalar@optim$converged) {
-      print("Refitting scalar")
-      scalar<-lavaan::cfa(..., optim.method = "L-BFGS-B")
-    }
-  }
 
-  # Summarize the results
+  # Summarize the results [use lav_compare() here]
 
- # if(thresholds.in.the.model)  {
-    
-  mdls =  c("configural", "metric", "scalar")[(!c("configural", "metric", "scalar") %in% omit)]
-  if(thresholds.in.the.model) mdls = ifelse("configural" %in% mdls, 
-                                            append(mdls, "thresholds", after = 1), 
-                                            append(mdls, "thresholds"))
+  out1 <- try(do.call(lavaan::lavTestLRT, append(unname(mdls), 
+                                                 #model.names=
+                                                   names(mdls))
+                      )
+              )
   
-  out <- try(do.call(lavaan::lavTestLRT, lapply(mdls, as.name)))
-  
-     
+
     
   fit.mes.index = c("cfi", "tli", "rmsea", "srmr", "chisq", "df")
-  if( all( c("cfi.scaled", "tli.scaled", "rmsea.scaled")  %in% names( do.call(lavaan::fitMeasures, list(as.name(mdls[1])))))) 
+  if( all( c("cfi.scaled", "tli.scaled", "rmsea.scaled")  %in% 
+           names(lavaan::fitMeasures(mdls[[1]]  ))))
     fit.mes.index <- append(fit.mes.index, c("cfi.scaled", "tli.scaled", "rmsea.scaled", "chisq.scaled"))
   
 
+
   
-  
-  model.list <- do.call(list, lapply(mdls, as.name))
-  
-  out2<-t(sapply(model.list, function(x) 
+  out2 <- t(sapply(mdls, function(x) 
     if(x@optim$converged) 
       lavaan::fitMeasures(x)[fit.mes.index] 
     else 
       rep(NA, length(fit.mes.index))
     ))
   
-  
-  # out2.2 <- apply(out2, 2, function(x) (c(NA, x[2]-x[1], x[3]-x[2]  )))
-  # colnames(out2.2)<- paste("diff.", toupper(colnames(out2.2)), sep="")
-  # out2.3 <- t(Reduce("rbind", lapply(1:ncol(out2), function(x) rbind(out2[,x], out2.2[,x]))))
-  # colnames(out2.3)<-toupper(as.vector(sapply(1:length(colnames(out2)), function(i) c(colnames(out2)[i], colnames(out2.2)[i]) )))
-
-  out2.3 = Reduce("cbind", lapply(1:ncol(out2), function(column) {
-    a= data.frame(
+  out2 <- Reduce("cbind", lapply(1:ncol(out2), function(column) {
+    fit.tbl = data.frame(
       out2[,column], 
       diff=sapply(1:length(out2[,column]), 
                   function(x) if(x==1) NA else out2[x,column] - out2[x-1,column])
     )
     
-    names(a) <- c(colnames(out2)[column], paste0("diff.", colnames(out2)[column] ))
-    a
+    names(fit.tbl) <- c(colnames(out2)[column], paste0("diff.", colnames(out2)[column] ))
+    fit.tbl
   }))
   
-  #rownames(out2.3)<-c("Configural", "Metric", "Scalar")
-  #if(any(lavaan::parameterTable(r.conf)$op =="|")) rownames(out2.3)<-c("Configural", "Thresholds", "Scalar")
-  rownames(out2.3) <- mdls
+  rownames(out2) <- names(mdls)
   
   if(chi.sq) {
-    print(fit.mes.index)
+    
     chi=ifelse(any(fit.mes.index=="chisq.scaled"), "chisq.scaled", "chisq")
-    out2.3$chisq.df <- paste0(round(out2.3[,chi],1), "(", out2.3[,"df"], ")")
-    out2.3[,chi] <- NULL        
-    out2.3[,"df"]  <- NULL
-    out2.3
+    out2$chisq.df <- paste0(round(out2[,chi],1), "(", out2[,"df"], ")")
+    out2[,chi] <- NULL        
+    out2[,"df"]  <- NULL
+    out2
   } else {
     
-    out2.3[,"chisq.scaled"]<- NULL
-    out2.3[,"chisq"]       <- NULL
-    out2.3[,"df"]          <- NULL
+    out2[,"chisq.scaled"]<- NULL
+    out2[,"chisq"]       <- NULL
+    out2[,"df"]          <- NULL
     
   }
     
-  print(out)
+  print(out1)
   cat("\n")
-  print(#round(out2.3, 3), 
-        out2.3,
-        digits=3, row.names = TRUE, na.print = "" )
+  print(out2, digits=3, row.names = TRUE, na.print = "" )
   
-  invisible(out2.3)
+  invisible(list(models=mdls, LRT=out1, fit=out2))
+  
 }
 
 
@@ -210,21 +192,25 @@ pairwiseFit <- function(model,
     #print(model.lav@call)
     
     # FN is a number of fit indices currently provided by lavaan  (currently 41) + 1 for dmacs
-    FN = length(lavaan::fitmeasures(model.lav)) + 1
+    FN = length(lavaan::fitmeasures(model.lav)) + 2
     
     if(lavaan::lavInspect(model.lav, "converged")) {
       mod<- lavaan::fitmeasures(model.lav) 
       # add dmacs
       mod<- c(mod, average.dmacs =  mean(MIE:::dmacs_lavaan(model.lav, signed = F), na.rm=T))
       
-      dmacs.signed.list<-list()
-      if(signed) dmacs.signed.list[[1]] <- MIE:::dmacs_lavaan(model.lav, signed = T)
-      
+      #dmacs.signed.list<-list()
+      #if(signed)
+        #dmacs.signed.list[[1]] <- MIE:::dmacs_lavaan(model.lav, signed = T)
+        mod<- c(mod, average.dmacs.signed =  
+                  mean(MIE:::dmacs_lavaan(model.lav, signed = T), na.rm=T))
       
       
     } else { 
       mod <- rep(999, FN)
-      mod <- c(mod, average.dmacs = 999)
+      mod <- c(mod, 
+               average.dmacs = 999, 
+               average.dmacs.signed = 999)
     }
     
     
@@ -248,10 +234,13 @@ pairwiseFit <- function(model,
       if(lavaan::lavInspect(model.lav, "converged")) {
         mod[,x]<- c(lavaan::fitmeasures(model.lav),
                     average.dmacs = 
-                      mean(MIE:::dmacs_lavaan(model.lav, signed = F),na.rm=T))
+                      mean(MIE:::dmacs_lavaan(model.lav, signed = F),na.rm=T),
+                    average.dmacs.signed  = 
+                      mean(MIE:::dmacs_lavaan(model.lav, signed = T),na.rm=T)
+                    )
         
         
-        if(signed) dmacs.signed.list[[x]] <- MIE:::dmacs_lavaan(model.lav, signed = T)
+      #  if(signed) dmacs.signed.list[[x]] <- MIE:::dmacs_lavaan(model.lav, signed = T)
         
         
         
@@ -631,6 +620,7 @@ return(out)
 #' @param n.clusters Number of clusters.
 #' @param fit.index Index to be used to in represneting measurement invariance distances. Only if the `measures` argument is an output of `incrementalFit`. Can be anything returned by `lavaan::fitMeasures`
 #' @param drop Vector of group names to be dropped from the plot.
+#' @param dist.method Method to compute distances.
 #' 
 #' @return Computes distances and performs multidimensional scaling (two-dimensional projection). Returns ggplot-based plot. 
 #' @seealso \code{\link{plotCutoff}}
@@ -640,14 +630,40 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
   pam1 = function(x, k){list(cluster = cluster::pam(x,k, diss = T, cluster.only=TRUE))}
   
   
+  # NEEDS TO REMOVE non converged coded 999
+  #measures$bunch[,measures$bunch[fit.index,]>1] <- NULL
+  
 
-    if("incrementalFit" %in% class(measures) | "average.dmacs" %in% fit.index) {
+    if("incrementalFit" %in% class(measures) | 
+       "average.dmacs" %in% fit.index | 
+       "average.dmacs.signed" %in% fit.index
+       ) {
       
-      if(fit.index=="average.dmacs") measures <- list(bunch=measures)
+      ##if(fit.index=="average.dmacs") measures <- list(bunch=measures)
 
-      dist1 <- reshape2::dcast(rbind( cbind(get_pairs(measures$bunch), measures$bunch[fit.index,]),
-                            cbind(`colnames<-`(get_pairs(measures$bunch)[,2:1], c("V1", "V2")), measures$bunch[fit.index,])
-      ), V2 ~ V1, value.var = "measures$bunch[fit.index, ]")
+      # dist1 <- reshape2::dcast(rbind( cbind(get_pairs(measures$bunch), 
+      #                                       measures$bunch[fit.index,]),
+      #                       cbind(`colnames<-`(get_pairs(measures$bunch)[,2:1], c("V1", "V2")), measures$bunch[fit.index,])
+      # ), V2 ~ V1, value.var = "measures$bunch[fit.index, ]")
+      
+      
+      if(fit.index %in% c("average.dmacs", "average.dmacs.signed")) {
+        dist1 <- reshape2::dcast(rbind( cbind(get_pairs(measures$bunch), 
+                                              measures$detailed[[fit.index]][,1]),
+                                        cbind(`colnames<-`(get_pairs(measures$bunch)[,2:1], 
+                                                           c("V1", "V2")), measures$detailed[[fit.index]][,1])
+        ), V2 ~ V1, value.var = "measures$detailed[[fit.index]][, 1]")
+        
+      } else {
+        dist1 <- reshape2::dcast(rbind( cbind(get_pairs(measures$bunch), 
+                                              measures$bunch[fit.index,]),
+                                        cbind(`colnames<-`(get_pairs(measures$bunch)[,2:1], 
+                                                           c("V1", "V2")), measures$bunch[fit.index,])
+        ), V2 ~ V1, value.var = "measures$bunch[fit.index, ]")
+      }
+      
+      
+      
       row.names(dist1)<- dist1$V2
       dist1$V2 <- NULL
       dist1<-as.matrix(dist1)
@@ -821,10 +837,11 @@ plotDistances <- function(measures, n.clusters = "auto", fit.index="cfi", drop =
      }
    
    
+ invisible(d)
 
-g
+ return(g)
  
- #invisible( d[,3:4])
+
  
 }
 
@@ -834,8 +851,10 @@ g
 #'  
 #' @param measures The result of \code{\link[MIE]{incrementalFit}}
 #' @param fit.index Index to be used to in representing measurement invariance distances. Only if the `measures` argument is an output of \code{\link[MIE]{incrementalFit}}. Should be "cfi", "rmsea", or "srmr", because only for these indices the cutoffs were suggested by Chen (2007).
-#' @param drop Vector of group names to be dropped from the plot.
-#' @param weighted Logical. If weighted graph should be created. See \code{\link[igraph]{graph_from_adjacency_matrix}} for details.
+#' @param cutoff Custom cutoff value used to plot the endges between groups.
+#' @param weighted Logical. If weighted graph should be created accounting for the size of fit intrement. See \code{\link[igraph]{graph_from_adjacency_matrix}} for details.
+#' @param drop Character vector of group names to be dropped from the plot.
+#' @param shiny Logical. If the function is executed in a shiny context.
 #' 
 #' @details The function extracts a given fit indeces from pairwise fitted MGCFAs, and uses cutoff of .01 to identify edges between groups (nodes), so that the groups for whom  invariance is supported, are connected on the plot. The results are plotted using \code{\link[igraph]{cluster_label_prop}}.
 #' @seealso \code{\link[MIE]{plotDistances}}
@@ -843,14 +862,7 @@ g
 plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = TRUE, drop = NULL, shiny = F) {
   
   
-  if(any(!fit.index %in% c("cfi", "rmsea", "srmr"))) {
-    if (shiny == T) {
-      showNotification("Cutoffs for this fit measure are not available. Using convenient .01 (unrealiable!).\n Consider switching off 'Use cutoffs' option.", type = "warning", duration = NULL, id = "nocutoffs")  
-    } else {
-      warning("Cutoffs for this fit measure are not available. Using convenient .01 (unrealiable!).\n Interpret cautiously.")
-     }
-    
-    } 
+ 
   
   # remove dropped groups
   #if(!is.null(drop)) measures <- measures[!rownames(measures) %in% drop, ]
@@ -866,11 +878,26 @@ plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = TR
    # 
    #                   )
     
-    thrshld <- function(x) `<`(x, .01)
-  
+    cutoff <- .01
+  } 
+
+if(fit.index %in% c("average.dmacs.signed")) {
+  thrshld <- function(x) `<`(abs(x), cutoff)
   } else {
-    thrshld <- function(x) `<`(x, cutoff)
+  thrshld <- function(x) `<`(x, cutoff)
   }
+  
+if(any(!fit.index %in% c("cfi", "rmsea", "srmr"))) {
+  if (shiny == T) {
+    showNotification("Cutoffs for this fit measure are not available. Using convenient .01 (unrealiable!).\n Consider switching off 'Use cutoffs' option.", type = "warning", duration = NULL, id = "nocutoffs") 
+    } else {
+      warning(paste("Cutoffs for this fit measure are not available. Using cutoff ", cutoff, "(unrealiable!).\n Interpret cautiously."))
+    }
+  } 
+  
+  
+  
+  
   
   # mtrx <- measures$detailed[[fit.index]]
   # mtrx.df <- data.frame(
@@ -883,16 +910,28 @@ plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = TR
   #   tie = thrshld(unname(mtrx[,"fit.decrease"]))
   # )
   
-  dist1 <- reshape2::dcast(rbind( cbind(get_pairs(measures$bunch), measures$bunch[fit.index,]),
-                                  cbind(`colnames<-`(get_pairs(measures$bunch)[,2:1], c("V1", "V2")), measures$bunch[fit.index,])
-  ), V2 ~ V1, value.var = "measures$bunch[fit.index, ]")
+  if(fit.index %in% c("average.dmacs", "average.dmacs.signed")) {
+  dist1 <- reshape2::dcast(rbind( cbind(get_pairs(measures$bunch), 
+                               measures$detailed[[fit.index]][,1]),
+                         cbind(`colnames<-`(get_pairs(measures$bunch)[,2:1], 
+                                            c("V1", "V2")), measures$detailed[[fit.index]][,1])
+  ), V2 ~ V1, value.var = "measures$detailed[[fit.index]][, 1]")
+  
+  } else {
+  dist1 <- reshape2::dcast(rbind( cbind(get_pairs(measures$bunch), 
+                                        measures$bunch[fit.index,]),
+                                  cbind(`colnames<-`(get_pairs(measures$bunch)[,2:1], 
+                                                     c("V1", "V2")), measures$bunch[fit.index,])
+                                  ), V2 ~ V1, value.var = "measures$bunch[fit.index, ]")
+  }
+  
   row.names(dist1)<- dist1$V2
   dist1$V2 <- NULL
   dist1<-as.matrix(dist1)
   # remove dropped groups
   if(!is.null(drop)) dist1 <- dist1[!rownames(dist1) %in% drop, !(colnames(dist1) %in% drop) ]
   
-  thrshld.dist1 = 
+  #thrshld.dist1 = 
     
   dist2<-thrshld(dist1)*1 
   dist1[!thrshld(dist1)] <- 0 
@@ -944,7 +983,7 @@ plotCutoff <- function(measures, fit.index = "cfi", cutoff = NULL, weighted = TR
     requireNamespace("ggplot2")
     requireNamespace("ggforce")
 
-    g<-  ggplot(coords, aes(dim1, dim2,  col=as.factor(cluster)))+
+    g <- ggplot(coords, aes(dim1, dim2,  col=as.factor(cluster)))+
       geom_segment(data = d3, aes(x = dim1.x, xend = dim1.y, y = dim2.x, yend = dim2.y), col = "black", alpha = .5)+
       #geom_text_repel(aes(label=group), point.padding = unit(.3, "lines"), show.legend=F)+
       
@@ -979,14 +1018,14 @@ g
 
 #'Dmacs 
 #' @description  Simply a wrapper arounnd dmacs::lavaan_dmacs() function
-#' @param lav.model fitted lavaan model
-dmacs <- function(lav.model) {
-  as.matrix(
-  dmacs::lavaan_dmacs(configural, 
-                      RefGroup=lavaan::lavInspect(configural, "group.label")[1], 
-                      "pooled" )$DMACS
-  )
-}
+#' @param lav.model fitted lavaan model, configural
+# dmacs <- function(configural) {
+#   as.matrix(
+#   dmacs::lavaan_dmacs(lav.model, 
+#                       RefGroup=lavaan::lavInspect(lav.model, "group.label")[1], 
+#                       "pooled" )$DMACS
+#   )
+# }
 
 
 dmacs.unsigned <- function(LambdaR, ThreshR, LambdaF, ThreshF, MeanF, VarF, SD) {
@@ -1049,7 +1088,10 @@ dmacs_lavaan <- function(fit, signed = F, pooled.sd = T, RefGroup = 1) {
                   diag(est[[-RefGroup]]$psi),
                   SDs)
   
-  DMACS= matrix(DMACS, nrow= dim(est[[RefGroup]]$lambda)[1], ncol =  dim(est[[RefGroup]]$lambda)[2])
+  DMACS= matrix(DMACS, 
+                nrow= dim(est[[RefGroup]]$lambda)[1], 
+                ncol =  dim(est[[RefGroup]]$lambda)[2]
+                )
   rownames(DMACS) <- rownames(est[[RefGroup]]$lambda)
   colnames(DMACS) <- colnames(est[[RefGroup]]$lambda)
   DMACS[est[[RefGroup]]$lambda==0] <- NA

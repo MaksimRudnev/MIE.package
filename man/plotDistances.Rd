@@ -21,6 +21,8 @@ plotDistances(
 \item{fit.index}{Index to be used to in represneting measurement invariance distances. Only if the `measures` argument is an output of `incrementalFit`. Can be anything returned by `lavaan::fitMeasures`}
 
 \item{drop}{Vector of group names to be dropped from the plot.}
+
+\item{dist.method}{Method to compute distances.}
 }
 \value{
 Computes distances and performs multidimensional scaling (two-dimensional projection). Returns ggplot-based plot.

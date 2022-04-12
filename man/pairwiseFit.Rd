@@ -12,6 +12,7 @@ pairwiseFit(
   pairs.of.groups = NULL,
   message = "Fitting pairwise lavaan models",
   shiny = FALSE,
+  signed = F,
   ...
 )
 }
@@ -29,6 +30,8 @@ pairwiseFit(
 \item{message}{Notification in shiny.}
 
 \item{shiny}{If it is executed in shiny environment.}
+
+\item{signed}{Only for DMACS, if the signed version should be used. See Nye et al 2019}
 
 \item{...}{Arguments passed to lavaan 'cfa' function.}
 }

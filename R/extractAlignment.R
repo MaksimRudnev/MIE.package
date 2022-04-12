@@ -12,6 +12,7 @@
 #' @export
 extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = FALSE ) {
   
+  if(!file.exists(file)) warning("File not found")
   
   # Basic extraction function  
   extractBetween <- function(begin, end, string) {
@@ -22,10 +23,19 @@ extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = 
   }
   
   
+ 
+  
+  
   
   # Read file
   b.string<-  paste(readLines(file), collapse="\n")
   
+  
+  # Extract estimator
+  sum.of.analysis.s <-  extractBetween( "SUMMARY OF ANALYSIS",  "SUMMARY OF DATA", b.string)
+  sum.of.analysis.s <-  strsplit(sum.of.analysis.s,"\n")[[1]]
+  estimator <- sum.of.analysis.s[grep("Estimator", sum.of.analysis.s)]
+  estimator <- sub("^(Estimator)\\s*", "", estimator)
   
   # Extract pairwise comparisons ########
   
@@ -35,6 +45,8 @@ extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = 
   align.outp <-strsplit(align.outp, "Loadings\n")[[1]]
   # drop first header
   align.outp <- sub("\n\nINVARIANCE ANALYSIS\n\n Intercepts/Thresholds\n ", " ", align.outp)
+  align.outp <- sub("\n\nINVARIANCE ANALYSIS\n\n Intercepts\n ", " ", align.outp)
+  
   
   al.pw.i <- strsplit(align.outp[1], "Intercept for |Threshold ")[[1]]
   al.pw.l <- unlist(strsplit(align.outp[2:length(align.outp)], "Loadings for "))
@@ -60,14 +72,29 @@ extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = 
   al.pw.names <- sapply(1:length(al.pw), function(b) substr( al.pw[b], 1, regexpr("\n", al.pw[b])-1))
   
   
-  
+  if(estimator == "BAYES") {
+    al.pw <- gsub("Approximate Invariance \\(Noninvariance\\) Holds For Groups:", 
+         "Approximate Measurement Invariance Holds For Groups:", 
+         al.pw) 
+    }
   al.pw.list <-strsplit(al.pw, " Approximate Measurement Invariance Holds For Groups:")
+  
   names(al.pw.list)<- al.pw.names
   
-  align.outp <- lapply(al.pw.list, function(x) { 
+  align.outp <- lapply(setNames(al.pw.names, nm=al.pw.names), function(x) { 
+    #print(x)
+    #x=al.pw.names[[6]]
+    x <- al.pw.list[[x]]
+   
     
     pairwise.tab <- read.table(text=x[1], stringsAsFactors = FALSE, skip=2)
+    if(estimator=="BAYES") {
+      colnames(pairwise.tab) <- c("Group1", "Group2", "Est_in_G1", "Est_in_G2", "Difference", "SE", "P_value",
+                                  "lowerCI", "upperCI")
+      
+    } else {
     colnames(pairwise.tab) <- c("Group1", "Group2", "Est_in_G1", "Est_in_G2", "Difference", "SE", "P_value" )
+    }
     
     invariant.groups <- substr(x[2], 2, regexpr("Weighted Average Value Across Invariant Groups:",x[2])-1)
     invariant.groups <- unlist(strsplit(readLines(textConnection(invariant.groups)), " "))
@@ -82,14 +109,19 @@ extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = 
     
     inv.comparison <- substr(x[2], regexpr("Invariant Group Values, Difference to Average and Significance", x[2]), nchar(x[2]))
     inv.comparison <- read.table(text = inv.comparison, skip=2)
-    colnames(inv.comparison) <- c("Group","Value", "Difference","SE","P.value")
     
+    if(estimator=="BAYES") {
+      colnames(inv.comparison) <- c("Group","Value", "Difference","SE","P.value", "lowerCI", "upperCI")
+    } else {
+    colnames(inv.comparison) <- c("Group","Value", "Difference","SE","P.value")
+    }
     
     list(
       "Pairwise comparison" = pairwise.tab,
       "Aligned parameter" = AlignedPar,
       "R2" = R2,
-      "Comparison of aligned" = inv.comparison,
+      "Comparison of aligned pars to average" = inv.comparison,
+      "N_noninvariant" = length(non.invariant.groups),
       "Invariant groups" = invariant.groups,
       "Non-invariant groups" = non.invariant.groups
     )
@@ -121,6 +153,7 @@ extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = 
   summ <- 
     t(sapply(align.outp, function(x)  c(AlignedParameter = x[["Aligned parameter"]],
                                         R2 = x[["R2"]], 
+                                        N_nonvariant = x[["N_noninvariant"]],
                                         invariant.gr = paste(x[["Invariant groups"]], collapse=" "), 
                                         non.invar.gr = paste(x[["Non-invariant groups"]], collapse = " "))))
   
@@ -130,6 +163,8 @@ extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = 
   
   
   # Fit contribution ######
+ if(estimator!="BAYES") {
+    
   if(grepl("TECHNICAL 8 OUTPUT", b.string))  {
     
     tech8 <-  substr(b.string, regexpr("TECHNICAL 8 OUTPUT", b.string), nchar(b.string))
@@ -188,6 +223,7 @@ extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = 
     
     output$summary <- output$summary #[order(output$summary$Factor),]
   }
+ }
   
   
   # Extract mean comparison ######
@@ -204,6 +240,25 @@ extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = 
     read.fwf(file=textConnection(x), skip=4, widths = c(7, 10, 10, 12, 1000),
              col.names = c("Ranking", "Latent class", "Group value", "Factor mean", "Groups With Significantly Smaller Factor Mean")) 
     
+  })
+  
+mean.comp <- lapply(mean.comp, function(x) {
+  x.new <- x[which(!is.na(x$Ranking)),]
+  x.new$Groups.With.Significantly.Smaller.Factor.Mean <- 
+      c(sapply(1:(nrow(x.new)-1), function(y) {
+       index.of.groups <- which(!is.na(x$Ranking))[[y]]:(which(!is.na(x$Ranking))[[y+1]]-1)
+       paste(x$Groups.With.Significantly.Smaller.Factor.Mean[index.of.groups], collapse="")
+      }), "NA")
+ 
+
+  Groups.With.Significantly.Smaller.Factor.Mean <- 
+    strsplit(x.new$Groups.With.Significantly.Smaller.Factor.Mean, " ")
+  Groups.With.Significantly.Smaller.Factor.Mean <- 
+    lapply(Groups.With.Significantly.Smaller.Factor.Mean, function(b) b[b!="" & b!="NA"])
+  x.new$NGroups.With.Smaller.Factor.Mean <- 
+    sapply(Groups.With.Significantly.Smaller.Factor.Mean, length)
+  x.new$Groups.With.Significantly.Smaller.Factor.Mean <- sapply(Groups.With.Significantly.Smaller.Factor.Mean, paste, collapse=", ")
+  x.new
   })
   
   output[["mean.comparison"]] <- mean.comp

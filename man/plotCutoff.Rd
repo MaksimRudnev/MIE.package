@@ -18,9 +18,13 @@ plotCutoff(
 
 \item{fit.index}{Index to be used to in representing measurement invariance distances. Only if the `measures` argument is an output of \code{\link[MIE]{incrementalFit}}. Should be "cfi", "rmsea", or "srmr", because only for these indices the cutoffs were suggested by Chen (2007).}
 
-\item{weighted}{Logical. If weighted graph should be created. See \code{\link[igraph]{graph_from_adjacency_matrix}} for details.}
+\item{cutoff}{Custom cutoff value used to plot the endges between groups.}
 
-\item{drop}{Vector of group names to be dropped from the plot.}
+\item{weighted}{Logical. If weighted graph should be created accounting for the size of fit intrement. See \code{\link[igraph]{graph_from_adjacency_matrix}} for details.}
+
+\item{drop}{Character vector of group names to be dropped from the plot.}
+
+\item{shiny}{Logical. If the function is executed in a shiny context.}
 }
 \description{
 Plots network based on pairwise fit indices reduced to Chen's cutoffs

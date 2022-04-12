@@ -13,7 +13,10 @@ runAlignment(
   sim.reps = 500,
   Mplus_com = "mplus",
   path = getwd(),
-  summaries = FALSE
+  summaries = FALSE,
+  estimator = "MLR",
+  listwise = "OFF",
+  processors = 2
 )
 }
 \arguments{

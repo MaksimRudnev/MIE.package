@@ -92,11 +92,11 @@ The circle should be circle, fix the coord_equal everywhere. Now can be fixed wi
 Implicate effect sizes following :
 
 
-Nye, C. D., Bradburn, J., Olenick, J., Bialko, C., & Drasgow, F. (2018). How Big Are My Effects? Examining the Magnitude of Effect Sizes in Studies of Measurement Equivalence. Organizational Research Methods, 1094428118761122. https://doi.org/10.1177/1094428118761122
+Nye, C. D., Bradburn, J., Olenick, J., Bialko, C., & Drasgow, F. (2018). How Big Are My Effects? Examining the Magnitude of Effect Sizes in Studies of Measurement Equivalence. Organizational Research Methods, 1094428118761122. https://doi.org/10.1177/1094428118761122
 
-Nye, C. D., & Drasgow, F. (2011). Effect size indices for analyses of measurement equivalence: Understanding the practical importance of differences between groups. Journal of Applied Psychology, 96(5), 966–980. https://doi.org/10.1037/a0022955
+Nye, C. D., & Drasgow, F. (2011). Effect size indices for analyses of measurement equivalence: Understanding the practical importance of differences between groups. Journal of Applied Psychology, 96(5), 966–980. https://doi.org/10.1037/a0022955
 
-Gunn, H. J., Grimm, K. J., & Edwards, M. C. (2019). Evaluation of Six Effect Size Measures of Measurement Non-Invariance for Continuous Outcomes. Structural Equation Modeling: A Multidisciplinary Journal, 1-12. https://doi.org/10.1080/10705511.2019.1689507
+Gunn, H. J., Grimm, K. J., & Edwards, M. C. (2019). Evaluation of Six Effect Size Measures of Measurement Non-Invariance for Continuous Outcomes. Structural Equation Modeling: A Multidisciplinary Journal, 1-12. https://doi.org/10.1080/10705511.2019.1689507
 
 
 

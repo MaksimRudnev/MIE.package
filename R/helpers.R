@@ -220,3 +220,196 @@ mgcfa_diagnose <- function(lavaan.model, output=c("overall", "neg.var", "mi")) {
     try(lavTestScore_clean(lavaan.model))
   }
 }
+
+#' Get the number of groups which show invariance with each of the groups
+#' @param fit Output of \code{\link{incrementalFit}}.
+#' @param sort  Logical. Should the results be sorted?
+#' @param fit.index Character. What measure should be used?
+#' @param cutoff The cutoff of the difference in `fit.index` to decide whether invariance holds.
+#' @param drop Character list of the groups that should be excluded from calculations.
+#'
+#' @returns  Returns a data frame with two columns: group name and the number of groups with invariant parameters.
+#'
+#' @export
+
+n_invariant <- function(fit, sort=F, fit.index="cfi", cutoff=.01, drop=NA) {
+  
+  a=cbind(attr(fit$bunch,"pairs.of.groups"), fit$detailed[[fit.index]])
+  if(!is.na(drop)) a = a[!( a$V1 %in% drop |  a$V2 %in% drop),]
+  a$invariant <- a$fit.decrease<cutoff
+  a1=reshape2::melt(a[, c("V1", "V2", "invariant")], id.vars = "invariant")
+  a2 = aggregate(a1$invariant, list(a1$value), sum )
+  
+  if(sort) 
+    return(a2[order(a2$x),])
+  else 
+    return(a2)
+  
+}
+
+
+#' Get the tree of 
+#' @param ... See \code{\link{n_invariant}} except `sort` and `drop` arguments.
+#' @returns  Returns a data frame with N-1 columns, where N is number of groups.
+#' @details Runs \code{\link{n_invariant}} iteratively, by dropping the least invariant group at each iteration until there are 2 groups left.
+#' @export
+#' 
+n_invariant_matrix <- function(...) {
+  
+  n.inv <- MIE:::n_invariant(..., sort=T, drop=NA)
+  dropped <-NA
+  n.inv.list <- n.inv
+  
+  for(i in 1:(length(n.inv[,1])-2) ) {
+    
+    dropped <- na.omit(c(dropped, n.inv[1,1]))
+    
+    n.inv <- MIE:::n_invariant(..., sort=T, drop=dropped)
+    
+    n.inv.list <- merge(n.inv.list, n.inv, by = "Group.1", all.x=T)
+    
+  }
+  
+  
+  sorted.n.inv.list <- n.inv.list[order(rowSums(is.na(n.inv.list[,-1])), decreasing = T),]
+  
+  print( as.matrix(sorted.n.inv.list) , na.print = "" , quote = FALSE )
+  invisible(n.inv.list)
+}
+
+#' Append lavaan syntax with group-specific covariances
+#'
+#' @param model character, lavaan syntax model
+#' @param group character, grouping variable
+#' @param data data frame
+#' @param cov character, covariance to add, e.g. "variable1 ~~ variable2"
+#' @param focal.groups Character vector for the groups to add the cov.
+#' @examples cov.model <-  "F =~ v1 + v2 v3 + v4 + v5"
+#' cov.model.custom.covs <-
+#'    lav.mod %>%
+#'      add_custom_covs("country", dat1,
+#'                      "v1 ~~ v3", c("China", "Indonesia")) %>%
+#'
+#'      add_custom_covs("country.f", dat1,
+#'                      "v2 ~~ v3", c("Israel"))
+#'
+#' @export
+add_custom_covs <- function(model, group, data, cov, focal.groups) {
+  
+  vector.zeros.nas <- paste(collapse="",
+                            capture.output(
+                              dput(
+                                sapply(unique(data[,group]),function(x) ifelse(x %in% focal.groups , NA, 0)))
+                            ))
+  new.synt <- paste("\n  ",
+                    strsplit(cov, "~~")[[1]][1],
+                    " ~~ ",
+                    vector.zeros.nas,
+                    "*",
+                    strsplit(cov, "~~")[[1]][2])
+  
+  paste(model,  new.synt, collapse = ";\n  ")
+  
+}
+
+
+#' Run clustered measurement invariance tests
+#'
+#' @param model character, lavaan syntax model
+#' @param group character, grouping variable
+#' @param data data frame
+#' @param clusters A list of character vectors of the group names to create clusters.
+#' @param parameters character vector, "all", "loadings", "thresholds", or "intercepts". Clusters are applied to this subset of parameters.
+#' @examples clusteredMI("F =~ v1 + v2 + v3 + v4", 
+#'          group = "country", 
+#'          data = Dat1, 
+#'          clusters = list(North = c("Norway", "Denmark", "Finland"), 
+#'                          South = c("Spain", "Portugal", "Italy")
+#'                          )
+#'           )
+#'
+#' @export
+
+clusteredMI <- function(model, group, data, clusters, parameters = c("loadings", "intercepts"), ref = "configural", additional = c("scalar"), ...) {
+  
+  config = cfa(model=model, data=data,  group=group,  do.fit = F, ...)
+  model2 <- lavaanify(model, ngroups = lavInspect(config, "ngroups"), meanstructure = T, auto=T)
+  op <- c("loadings" = "=~","intercepts" = "~1", "thresholds"= "|")[parameters]
+  labs <- lavInspect(config, "group.label")
+  
+  for(m in names(clusters) ) {
+    if(length(clusters[[m]])>1) {
+      
+      groupings = combn(match(clusters[[m]], labs), 2)
+      for(i in 1:ncol(groupings)) {
+        labs1 = model2[model2$group==groupings[1,i] & model2$op %in% op & model2$free!=0, "plabel" ]
+        labs2 = model2[model2$group==groupings[2,i] & model2$op %in% op & model2$free!=0, "plabel" ]
+        nd<- data.frame(id = (max(model2$id)+1):(max(model2$id)+length(labs1)),
+                        lhs = labs1, 
+                        op = rep("==",length(labs1)),
+                        rhs = labs2, 
+                        user = rep(2,length(labs1)),
+                        block=rep(0,length(labs1)), 
+                        group=rep(0,length(labs1)),
+                        free=rep(0,length(labs1)), 
+                        ustart=rep(NA,length(labs1)),exo=rep(0,length(labs1)),
+                        label=rep("",length(labs1)), plabel=rep("",length(labs1)))
+        model2 <- rbind(model2, nd)
+      }}}
+  
+  if(ref == "metric") {
+    metrc.model <- lavaanify(model, ngroups = lavInspect(config, "ngroups"), 
+                             meanstructure = T, auto=T, group.equal = "loadings")
+    model2 <- rbind(model2, metrc.model[metrc.model$op=="==",])
+    
+    # # ! Fix means in one group within each cluster
+    # # remove constraints on means
+    # means.except.1.group <- 
+    #   model2$lhs %in% names(lavInspect(config, "mean.lv")[[1]]) &
+    #   model2$op == "~1" & 
+    #   model2$group != 1
+    
+    # remove constraints on means
+    first.groups.in.clusters <- sapply(clusters, function(x) x[[1]])
+    first.group.not.in.cluster <- labs[ !labs %in% as.vector(unlist(clusters))]
+    if(length(first.group.not.in.cluster)>0) {
+      first.groups <- c(first.groups.in.clusters, first.group.not.in.cluster)
+    } else {
+      first.groups <- first.groups.in.clusters
+    }
+    
+    means.except.1.group <- 
+        model2$lhs %in% names(lavInspect(config, "mean.lv")[[1]]) &
+        model2$op == "~1" &
+        !model2$group %in% match(labs, first.groups)
+  
+
+    model2[means.except.1.group,"free"] <- (max(model2$free)+1):
+                                            max(model2$free+sum(means.except.1.group))
+    
+  }
+  
+  fits <- list(
+    
+    clustered  = cfa(model=model2, data=data,  group=group, ...),
+    configural = cfa(model=model, data=data,  group=group, ...),
+    metric     = cfa(model=model, data=data,  group=group, group.equal = "loadings", ...),
+    scalar     = cfa(model=model, data=data,  group=group, group.equal = c("loadings", "intercepts", "thresholds"), ...)
+    )
+  
+  if(length(additional)==0) {
+    
+      LittleHelpers::lav_compare(fits[[ref]], fits[["clustered"]])
+  
+    } else if(length(additional)==1) {
+    
+      LittleHelpers::lav_compare(fits[[ref]], fits[["clustered"]], fits[[additional]])
+    } else if(length(additional)==2) {
+      LittleHelpers::lav_compare(fits[[ref]], fits[["clustered"]], 
+                                 fits[[additional[1]]], fits[[additional[2]]])
+    }
+  
+  invisible(fits)
+  
+}
+
