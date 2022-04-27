@@ -37,198 +37,23 @@ extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = 
   estimator <- sum.of.analysis.s[grep("Estimator", sum.of.analysis.s)]
   estimator <- sub("^(Estimator)\\s*", "", estimator)
   
-  # Extract pairwise comparisons ########
-  
-  # extract alignment part
-  align.outp <- extractBetween("ALIGNMENT OUTPUT", "Average Invariance index", b.string)
-  #separate intercepts/thresholds and loadings
-  align.outp <-strsplit(align.outp, "Loadings\n")[[1]]
-  # drop first header
-  align.outp <- sub("\n\nINVARIANCE ANALYSIS\n\n Intercepts/Thresholds\n ", " ", align.outp)
-  align.outp <- sub("\n\nINVARIANCE ANALYSIS\n\n Intercepts\n ", " ", align.outp)
-  
-  
-  al.pw.i <- strsplit(align.outp[1], "Intercept for |Threshold ")[[1]]
-  al.pw.l <- unlist(strsplit(align.outp[2:length(align.outp)], "Loadings for "))
-  
-  # this is reqired to name the fit contribution
-  loading.names.by.factor <- {
-    a <- strsplit(align.outp[2:length(align.outp)], "Loadings for ")
-    lapply(a, function(y) {
-      m <- sapply(y, function(b) substr( b, 1, regexpr("\n", b)-1))
-      m <- m[!m==""]
-      unname(m)
-    })
-  }
-  
-  
-  al.pw.i <-al.pw.i[!al.pw.i %in% c(" ",NA,"")]
-  al.pw.l <-al.pw.l[!al.pw.l %in% c(" ",NA,"")]
-  
-  al.pw.i.names1 <- sapply(1:length(al.pw.i), function(b) substr( al.pw.i[b], 1, regexpr("\n", al.pw.i[b])-1))
-  al.pw.i.names2 <- sapply(al.pw.i.names1, function(nmz) ifelse( grepl("\\$", nmz), "Threshold", "Intercept"))
-  
-  al.pw <- c(paste(al.pw.i.names2, al.pw.i), paste("Loadings", al.pw.l))
-  al.pw.names <- sapply(1:length(al.pw), function(b) substr( al.pw[b], 1, regexpr("\n", al.pw[b])-1))
-  
-  
-  if(estimator == "BAYES") {
-    al.pw <- gsub("Approximate Invariance \\(Noninvariance\\) Holds For Groups:", 
-         "Approximate Measurement Invariance Holds For Groups:", 
-         al.pw) 
-    }
-  al.pw.list <-strsplit(al.pw, " Approximate Measurement Invariance Holds For Groups:")
-  
-  names(al.pw.list)<- al.pw.names
-  
-  align.outp <- lapply(setNames(al.pw.names, nm=al.pw.names), function(x) { 
-    #print(x)
-    #x=al.pw.names[[6]]
-    x <- al.pw.list[[x]]
-   
-    
-    pairwise.tab <- read.table(text=x[1], stringsAsFactors = FALSE, skip=2)
-    if(estimator=="BAYES") {
-      colnames(pairwise.tab) <- c("Group1", "Group2", "Est_in_G1", "Est_in_G2", "Difference", "SE", "P_value",
-                                  "lowerCI", "upperCI")
-      
-    } else {
-    colnames(pairwise.tab) <- c("Group1", "Group2", "Est_in_G1", "Est_in_G2", "Difference", "SE", "P_value" )
-    }
-    
-    invariant.groups <- substr(x[2], 2, regexpr("Weighted Average Value Across Invariant Groups:",x[2])-1)
-    invariant.groups <- unlist(strsplit(readLines(textConnection(invariant.groups)), " "))
-    invariant.groups <- invariant.groups[!invariant.groups==""]
-    
-    all.groups <- unique(unlist(pairwise.tab[,1:2]))
-    non.invariant.groups <- all.groups[!all.groups %in% invariant.groups]
-    
-    
-    AlignedPar = as.numeric(sub(".*Weighted Average Value Across Invariant Groups: *(.*?) *\n.*", "\\1", x[2]))
-    R2 = as.numeric(sub(".*R-square/Explained variance/Invariance index: *(.*?) *\n.*", "\\1", x[2]))
-    
-    inv.comparison <- substr(x[2], regexpr("Invariant Group Values, Difference to Average and Significance", x[2]), nchar(x[2]))
-    inv.comparison <- read.table(text = inv.comparison, skip=2)
-    
-    if(estimator=="BAYES") {
-      colnames(inv.comparison) <- c("Group","Value", "Difference","SE","P.value", "lowerCI", "upperCI")
-    } else {
-    colnames(inv.comparison) <- c("Group","Value", "Difference","SE","P.value")
-    }
-    
-    list(
-      "Pairwise comparison" = pairwise.tab,
-      "Aligned parameter" = AlignedPar,
-      "R2" = R2,
-      "Comparison of aligned pars to average" = inv.comparison,
-      "N_noninvariant" = length(non.invariant.groups),
-      "Invariant groups" = invariant.groups,
-      "Non-invariant groups" = non.invariant.groups
-    )
-    
-  })
+  # Version of Mplus
+  mplus.version <- substr(b.string, 
+         attr(regexpr("(Mplus VERSION)", b.string), "match.length")+1, 
+         regexpr("\n", b.string)-1)
+  mplus.version <- strsplit(mplus.version, " ")[[1]]
+  mplus.version.system <- mplus.version[[3]] 
+  mplus.version <- mplus.version[[2]]
+
+  # output list to be filled
   output <- list()
-  output[["alignment.output"]] <- align.outp
-  
-  # Summaries
-  
-  
-  # invariant.groups.pars.tab
-  
-  all.groups <- c(align.outp[[1]]$`Invariant groups`, align.outp[[1]]$`Non-invariant groups`)
-  non.invariant.groups.pars.tab <- sapply(align.outp, function(x) { 
-    
-    temp<-rep("", length(all.groups))
-    temp[!all.groups %in% x[["Invariant groups"]]]<-"X"
-    temp
-  })
-  rownames(non.invariant.groups.pars.tab)<-all.groups
-  
-  output[["non.invariant.pars"]] <- t(non.invariant.groups.pars.tab)
-  
- 
-  
-  # Extract summaries: R2, aligned parameters, list of invariant and non-invariant groups #####
-  
-  summ <- 
-    t(sapply(align.outp, function(x)  c(AlignedParameter = x[["Aligned parameter"]],
-                                        R2 = x[["R2"]], 
-                                        N_nonvariant = x[["N_noninvariant"]],
-                                        invariant.gr = paste(x[["Invariant groups"]], collapse=" "), 
-                                        non.invar.gr = paste(x[["Non-invariant groups"]], collapse = " "))))
-  
-  
-  
-  output[["summary"]] <- summ
-  
-  
-  # Fit contribution ######
- if(estimator!="BAYES") {
-    
-  if(grepl("TECHNICAL 8 OUTPUT", b.string))  {
-    
-    tech8 <-  substr(b.string, regexpr("TECHNICAL 8 OUTPUT", b.string), nchar(b.string))
-    tech8 <-  sub("TECHNICAL 8 OUTPUT\n\n\n", "", tech8)
-    tech8 <-  substr(tech8, 1, regexpr("(\n\n\n)", tech8))
-    tech8.align <- strsplit(tech8, "ALIGNMENT RESULTS FOR ")[[1]][-1]
-    
-    # turn string output to a table
-    f.names <- sapply(tech8.align, function(x) substr(x, 1, regexpr("\n", x)-1))
-      #
-    #fit.contrib <- lapply(1:length(tech8.align), function(x) {
-      
-      f.contrib.l <-  sub(".* Fit Function Loadings Contribution By Variable *(.*?) *Fit Function Loadings Contribution By Group.*", "\\1", tech8.align)
-      f.contrib.i <-  sub(".* Fit Function Intercepts Contribution By Variable *(.*?) *Fit Function Intercepts Contribution By Group.*", "\\1", tech8.align)
-      
-      contrib.i.tab <- read.table(text=f.contrib.i)
-      contrib.l.tab <- read.table(text=f.contrib.l)
-      contrib <- unname(c(unlist(contrib.i.tab), unlist(contrib.l.tab)))
-      
-      # names(contrib) <- c( 
-      #   paste("Intercept", unlist(loading.names.by.factor[[x]])),
-      #   paste("Loadings", loading.names.by.factor[[x]])
-      # )
-      
-     nmz.th.int <- paste(al.pw.i.names2, al.pw.i.names1)
-     nmz.loadings <- al.pw.names[!al.pw.names %in% nmz.th.int]
-     
-      
-     # because Mplus prints duplicates for factor loadings when thresholds are present, we need to drop duplicates
-     if(nrow(contrib.l.tab)>length(nmz.loadings)) {
-       contrib.l.tab <- contrib.l.tab[!duplicated(contrib.l.tab),]
-       contrib <- unname(c(unlist(contrib.i.tab), unlist(contrib.l.tab)))
-     }
-     
-     names(contrib) <- c(nmz.th.int, nmz.loadings)
-     
-     fit.contrib = data.frame(Fit.contribution = contrib, 
-    #             Factor = rep(f.names[1], length(contrib)), 
-    #             row.names = names(contrib),
-                 stringsAsFactors = F)
-   
-   # })
-    
-    # f.names <- sapply(tech8.align, function(x) substr(x, 1, regexpr("\n", x)-1))
-    # 
-    # fit <- data.frame(Fit.contribution = unlist(fit.contrib),
-    #                   Factor = rep(unname(f.names), each=length(f.contrib.l)),
-    #                   stringsAsFactors = FALSE)
-    # 
-    # fit <- aggregate(fit,  list(names(unlist(fit.contrib))), function(x) x[1])
-    # rownames(fit) <- fit$Group.1
-    
-    #fit.contrib <- Reduce("rbind", fit.contrib)
-    output$summary <- merge(summ, fit.contrib, 
-          by = "row.names")
-    
-    output$summary <- output$summary #[order(output$summary$Factor),]
-  }
- }
-  
   
   # Extract mean comparison ######
-  
+  if(mplus.version == "8.8") {
+    mean.comparison <- extractBetween("FACTOR MEAN/INTERCEPT COMPARISON AT THE 5% SIGNIFICANCE LEVEL IN DESCENDING ORDER", "\n\n\n\n\n", b.string)
+  } else {
   mean.comparison <- extractBetween("FACTOR MEAN COMPARISON AT THE 5% SIGNIFICANCE LEVEL IN DESCENDING ORDER", "\n\n\n\n\n", b.string)
+  }
   mean.comparison<-mean.comparison[!mean.comparison==""]
   mean.comparison<- strsplit(mean.comparison,"(Results for Factor)")[[1]][-1]
   
@@ -287,9 +112,207 @@ mean.comp <- lapply(mean.comp, function(x) {
     } else {
       message("Could not find ranking file.")
     }
+  }
+  
+  # Extract pairwise comparisons ### #####
+  
+  # extract alignment part
+  align.outp <- extractBetween("ALIGNMENT OUTPUT", "Average Invariance index", b.string)
+  #separate intercepts/thresholds and loadings
+
+  if(mplus.version == "8.8") { 
+    
+  align.outp <- strsplit(align.outp, paste0("Loadings for ", names(mean.comp),"\n"))[[1]]
+#!!!---from this part should be expanded to a case of corss-loadings, i.e. multiple factors
+  if(length(align.outp)>2) warning("The model contains multiple factors which are not currently supported.")
+  
+  } else {
+  align.outp <- strsplit(align.outp, "Loadings\n")[[1]]
+  }
+  # drop first header
+  align.outp <- sub("\n\nINVARIANCE ANALYSIS\n\n Intercepts/Thresholds\n ", " ", align.outp)
+  align.outp <- sub("\n\nINVARIANCE ANALYSIS\n\n Intercepts\n ", " ", align.outp)
+  
+  
+  al.pw.i <- strsplit(align.outp[1], "Intercept for |Threshold ")[[1]]
+  al.pw.l <- unlist(strsplit(align.outp[2:length(align.outp)], "Loadings for "))
+  
+  # this is reqired to name the fit contribution
+  loading.names.by.factor <- {
+    a <- strsplit(align.outp[2:length(align.outp)], "Loadings for ")
+    lapply(a, function(y) {
+      m <- sapply(y, function(b) substr( b, 1, regexpr("\n", b)-1))
+      m <- m[!m==""]
+      unname(m)
+    })
+  }
+  
+  
+  al.pw.i <-al.pw.i[!al.pw.i %in% c(" ",NA,"")]
+  al.pw.l <-al.pw.l[!al.pw.l %in% c(" ",NA,"")]
+  
+  al.pw.i.names1 <- sapply(1:length(al.pw.i), function(b) substr( al.pw.i[b], 1, regexpr("\n", al.pw.i[b])-1))
+  al.pw.i.names2 <- sapply(al.pw.i.names1, function(nmz) ifelse( grepl("\\$", nmz), "Threshold", "Intercept"))
+  
+  al.pw <- c(paste(al.pw.i.names2, al.pw.i), paste("Loadings", al.pw.l))
+  al.pw.names <- sapply(1:length(al.pw), function(b) substr( al.pw[b], 1, regexpr("\n", al.pw[b])-1))
+  
+  
+  if(estimator == "BAYES") {
+    al.pw <- gsub("Approximate Invariance \\(Noninvariance\\) Holds For Groups:", 
+                  "Approximate Measurement Invariance Holds For Groups:", 
+                  al.pw) 
+  }
+  al.pw.list <-strsplit(al.pw, " Approximate Measurement Invariance Holds For Groups:")
+  
+  names(al.pw.list)<- al.pw.names
+  
+  align.outp <- lapply(setNames(al.pw.names, nm=al.pw.names), function(x) { 
+    #print(x)
+    #x=al.pw.names[[5]]
+    x <- al.pw.list[[x]]
+    
+    
+    pairwise.tab <- read.table(text=x[1], stringsAsFactors = FALSE, skip=2)
+    if(estimator=="BAYES") {
+      colnames(pairwise.tab) <- c("Group1", "Group2", "Est_in_G1", "Est_in_G2", "Difference", "SE", "P_value",
+                                  "lowerCI", "upperCI")
+      
+    } else {
+      colnames(pairwise.tab) <- c("Group1", "Group2", "Est_in_G1", "Est_in_G2", "Difference", "SE", "P_value" )
     }
+    
+    invariant.groups <- substr(x[2], 2, regexpr("Weighted Average Value Across Invariant Groups:",x[2])-1)
+    invariant.groups <- unlist(strsplit(readLines(textConnection(invariant.groups)), " "))
+    invariant.groups <- invariant.groups[!invariant.groups==""]
+    
+    all.groups <- unique(unlist(pairwise.tab[,1:2]))
+    non.invariant.groups <- all.groups[!all.groups %in% invariant.groups]
+    
+    
+    AlignedPar = as.numeric(sub(".*Weighted Average Value Across Invariant Groups: *(.*?) *\n.*", "\\1", x[2]))
+    R2 = as.numeric(sub(".*R-square/Explained variance/Invariance index: *(.*?) *\n.*", "\\1", x[2]))
+    
+    inv.comparison <- substr(x[2], regexpr("Invariant Group Values, Difference to Average and Significance", x[2]), nchar(x[2]))
+    inv.comparison <- read.table(text = inv.comparison, skip=2)
+    
+    if(estimator=="BAYES") {
+      colnames(inv.comparison) <- c("Group","Value", "Difference","SE","P.value", "lowerCI", "upperCI")
+    } else {
+      colnames(inv.comparison) <- c("Group","Value", "Difference","SE","P.value")
+    }
+    
+    list(
+      "Pairwise comparison" = pairwise.tab,
+      "Aligned parameter" = AlignedPar,
+      "R2" = R2,
+      "Comparison of aligned pars to average" = inv.comparison,
+      "N_noninvariant" = length(non.invariant.groups),
+      "Invariant groups" = invariant.groups,
+      "Non-invariant groups" = non.invariant.groups
+    )
+    
+  })
+
+  output[["alignment.output"]] <- align.outp
+  
+  # Summaries
   
   
+  # invariant.groups.pars.tab
+  
+  all.groups <- c(align.outp[[1]]$`Invariant groups`, align.outp[[1]]$`Non-invariant groups`)
+  non.invariant.groups.pars.tab <- sapply(align.outp, function(x) { 
+    
+    temp<-rep("", length(all.groups))
+    temp[!all.groups %in% x[["Invariant groups"]]]<-"X"
+    temp
+  })
+  rownames(non.invariant.groups.pars.tab)<-all.groups
+  
+  output[["non.invariant.pars"]] <- t(non.invariant.groups.pars.tab)
+  
+  
+  
+  # Extract summaries: R2, aligned parameters, list of invariant and non-invariant groups #####
+  
+  summ <- 
+    t(sapply(align.outp, function(x)  c(AlignedParameter = x[["Aligned parameter"]],
+                                        R2 = x[["R2"]], 
+                                        N_nonvariant = x[["N_noninvariant"]],
+                                        invariant.gr = paste(x[["Invariant groups"]], collapse=" "), 
+                                        non.invar.gr = paste(x[["Non-invariant groups"]], collapse = " "))))
+  
+  
+  
+  output[["summary"]] <- summ
+  
+  
+  # Fit contribution ######
+  if(estimator %in% c("MLR", "ML")) {
+    
+    if(grepl("TECHNICAL 8 OUTPUT", b.string))  {
+      
+      tech8 <-  substr(b.string, regexpr("TECHNICAL 8 OUTPUT", b.string), nchar(b.string))
+      tech8 <-  sub("TECHNICAL 8 OUTPUT\n\n\n", "", tech8)
+      tech8 <-  substr(tech8, 1, regexpr("(\n\n\n)", tech8))
+      tech8.align <- strsplit(tech8, "ALIGNMENT RESULTS FOR ")[[1]][-1]
+      
+      # turn string output to a table
+      f.names <- sapply(tech8.align, function(x) substr(x, 1, regexpr("\n", x)-1))
+      #
+      #fit.contrib <- lapply(1:length(tech8.align), function(x) {
+      
+      f.contrib.l <-  sub(".* Fit Function Loadings Contribution By Variable *(.*?) *Fit Function Loadings Contribution By Group.*", "\\1", tech8.align)
+      f.contrib.i <-  sub(".* Fit Function Intercepts Contribution By Variable *(.*?) *Fit Function Intercepts Contribution By Group.*", "\\1", tech8.align)
+      
+      contrib.i.tab <- read.table(text=f.contrib.i)
+      contrib.l.tab <- read.table(text=f.contrib.l)
+      contrib <- unname(c(unlist(contrib.i.tab), unlist(contrib.l.tab)))
+      
+      # names(contrib) <- c( 
+      #   paste("Intercept", unlist(loading.names.by.factor[[x]])),
+      #   paste("Loadings", loading.names.by.factor[[x]])
+      # )
+      
+      nmz.th.int <- paste(al.pw.i.names2, al.pw.i.names1)
+      nmz.loadings <- al.pw.names[!al.pw.names %in% nmz.th.int]
+      
+      
+      # because Mplus prints duplicates for factor loadings when thresholds are present, we need to drop duplicates
+      if(nrow(contrib.l.tab)>length(nmz.loadings)) {
+        contrib.l.tab <- contrib.l.tab[!duplicated(contrib.l.tab),]
+        contrib <- unname(c(unlist(contrib.i.tab), unlist(contrib.l.tab)))
+      }
+      
+      names(contrib) <- c(nmz.th.int, nmz.loadings)
+      
+      fit.contrib = data.frame(Fit.contribution = contrib, 
+                               #             Factor = rep(f.names[1], length(contrib)), 
+                               #             row.names = names(contrib),
+                               stringsAsFactors = F)
+      
+      # })
+      
+      # f.names <- sapply(tech8.align, function(x) substr(x, 1, regexpr("\n", x)-1))
+      # 
+      # fit <- data.frame(Fit.contribution = unlist(fit.contrib),
+      #                   Factor = rep(unname(f.names), each=length(f.contrib.l)),
+      #                   stringsAsFactors = FALSE)
+      # 
+      # fit <- aggregate(fit,  list(names(unlist(fit.contrib))), function(x) x[1])
+      # rownames(fit) <- fit$Group.1
+      
+      #fit.contrib <- Reduce("rbind", fit.contrib)
+      output$summary <- merge(summ, fit.contrib, 
+                              by = "row.names")
+      
+      output$summary <- output$summary #[order(output$summary$Factor),]
+    }
+  }
+  
+  
+  # Printing output
   if(!silent) print(output$summary, row.names=FALSE)
   if(nice.tables && !silent) {
     nice.tab1 <- knitr::kable(output$non.invariant.pars, format = "html")
