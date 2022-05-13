@@ -49,10 +49,10 @@ globalMI <- function(..., chi.sq=FALSE, omit = "") {
   # Summarize the results [use lav_compare() here]
 
   out1 <- try(do.call(lavaan::lavTestLRT, append(unname(mdls), 
-                                                 #model.names=
-                                                   names(mdls))
-                      )
-              )
+                                                 list(model.names =
+                                                        names(mdls)))
+  )
+  )
   
 
     
