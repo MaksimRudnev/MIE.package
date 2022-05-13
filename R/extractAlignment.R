@@ -10,7 +10,7 @@
 #' @return A list of summary tables.
 #' @seealso \code{\link[MIE]{runAlignment}}  and \code{\link[MIE]{extractAlignmentSim}} 
 #' @export
-extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = FALSE ) {
+extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = FALSE, what = c("summary", "ranking", "comparisons") ) {
   
   if(!file.exists(file)) warning("File not found")
   
@@ -24,15 +24,13 @@ extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = 
   
   
  
-  
-  
-  
+
   # Read file
   b.string<-  paste(readLines(file), collapse="\n")
   
   
   # Extract estimator
-  sum.of.analysis.s <-  extractBetween( "SUMMARY OF ANALYSIS",  "SUMMARY OF DATA", b.string)
+  sum.of.analysis.s <-  extractBetween( "SUMMARY OF ANALYSIS",  "Input data format  ", b.string)
   sum.of.analysis.s <-  strsplit(sum.of.analysis.s,"\n")[[1]]
   estimator <- sum.of.analysis.s[grep("Estimator", sum.of.analysis.s)]
   estimator <- sub("^(Estimator)\\s*", "", estimator)
@@ -49,11 +47,21 @@ extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = 
   output <- list()
   
   # Extract mean comparison ######
-  if(mplus.version == "8.8") {
-    mean.comparison <- extractBetween("FACTOR MEAN/INTERCEPT COMPARISON AT THE 5% SIGNIFICANCE LEVEL IN DESCENDING ORDER", "\n\n\n\n\n", b.string)
+  if(mplus.version == "8.8"  & estimator!="BAYES") {
+    
+    mean.comparison <- extractBetween(
+      "FACTOR MEAN/INTERCEPT COMPARISON AT THE 5% SIGNIFICANCE LEVEL IN DESCENDING ORDER", 
+      "\n\n\n\n\n", b.string)
+    
   } else {
-  mean.comparison <- extractBetween("FACTOR MEAN COMPARISON AT THE 5% SIGNIFICANCE LEVEL IN DESCENDING ORDER", "\n\n\n\n\n", b.string)
+    
+    mean.comparison <- extractBetween(
+      "FACTOR MEAN COMPARISON AT THE 5% SIGNIFICANCE LEVEL IN DESCENDING ORDER", 
+      
+      "\n\n\n\n\n", b.string)
   }
+  
+  
   mean.comparison<-mean.comparison[!mean.comparison==""]
   mean.comparison<- strsplit(mean.comparison,"(Results for Factor)")[[1]][-1]
   
@@ -90,7 +98,7 @@ mean.comp <- lapply(mean.comp, function(x) {
   
   
   
-  
+  if("ranking" %in% what) {
   # Extract ranking table #####
   if(grepl("Factor Mean Ranking Tables", b.string)) {
     
@@ -113,31 +121,62 @@ mean.comp <- lapply(mean.comp, function(x) {
       message("Could not find ranking file.")
     }
   }
+  }
   
+  if("comparisons" %in% what) {
   # Extract pairwise comparisons ### #####
   
   # extract alignment part
   align.outp <- extractBetween("ALIGNMENT OUTPUT", "Average Invariance index", b.string)
   #separate intercepts/thresholds and loadings
 
-  if(mplus.version == "8.8") { 
+  if(mplus.version == "8.8" & estimator!="BAYES") { 
     
-  align.outp <- strsplit(align.outp, paste0("Loadings for ", names(mean.comp),"\n"))[[1]]
-#!!!---from this part should be expanded to a case of corss-loadings, i.e. multiple factors
-  if(length(align.outp)>2) warning("The model contains multiple factors which are not currently supported.")
-  
+      align.outp1 <- strsplit(align.outp, "\n\n\n Loadings for ", fixed=T)[[1]]
+     
+      
+      # intercepts.thresholds.comparison
+      al.i.th <- align.outp1[[1]]
+      al.i.th <- sub("\n\nINVARIANCE ANALYSIS\n\n Intercepts/Thresholds\n ", " ",  al.i.th)
+      al.pw.i <- strsplit(al.i.th, "(Intercept for )|(Threshold )")[[1]]
+    
+      
+      
+     # strsplit(al.pw.i, "\n")[[1]][1:15]
+      
+      
+      al.loads <-align.outp1[-1]
+      names(al.loads)<-names(mean.comp)
+      al.loads <-lapply(seq_along(al.loads), 
+                       function(x) 
+                        gsub("Loadings for ",
+                             paste("Loadings for ", names(al.loads)[[x]], "by "),
+                             al.loads[[x]][[1]])
+                       )
+      
+      al.loads <-lapply(al.loads,   function(x) sub("^\\S*", "", x) )
+      
+      # strsplit(al.loads[[2]], "\n")[[1]][1:15]
+      # strsplit(sub("^\\S*", "", x), "\n")[[1]][1:15]
+      
+      al.pw.l <- unlist(strsplit(paste(al.loads, collapse="\n"), "Loadings for "))
+      #str(al.pw.l)
+      
+      #names(al.pw.l)
+      # strsplit(al.pw.l[[9]], "\n")[[1]][1:15]
+      
   } else {
+    
   align.outp <- strsplit(align.outp, "Loadings\n")[[1]]
-  }
-  # drop first header
   align.outp <- sub("\n\nINVARIANCE ANALYSIS\n\n Intercepts/Thresholds\n ", " ", align.outp)
   align.outp <- sub("\n\nINVARIANCE ANALYSIS\n\n Intercepts\n ", " ", align.outp)
-  
-  
   al.pw.i <- strsplit(align.outp[1], "Intercept for |Threshold ")[[1]]
   al.pw.l <- unlist(strsplit(align.outp[2:length(align.outp)], "Loadings for "))
+  }
   
-  # this is reqired to name the fit contribution
+  # drop first header
+if(estimator=="MLR") {
+  # this is required to name the fit contribution
   loading.names.by.factor <- {
     a <- strsplit(align.outp[2:length(align.outp)], "Loadings for ")
     lapply(a, function(y) {
@@ -145,11 +184,11 @@ mean.comp <- lapply(mean.comp, function(x) {
       m <- m[!m==""]
       unname(m)
     })
-  }
+  }}
   
   
   al.pw.i <-al.pw.i[!al.pw.i %in% c(" ",NA,"")]
-  al.pw.l <-al.pw.l[!al.pw.l %in% c(" ",NA,"")]
+  al.pw.l <-al.pw.l[!al.pw.l %in% c(" ",NA,"", "\n ")]
   
   al.pw.i.names1 <- sapply(1:length(al.pw.i), function(b) substr( al.pw.i[b], 1, regexpr("\n", al.pw.i[b])-1))
   al.pw.i.names2 <- sapply(al.pw.i.names1, function(nmz) ifelse( grepl("\\$", nmz), "Threshold", "Intercept"))
@@ -161,7 +200,7 @@ mean.comp <- lapply(mean.comp, function(x) {
   if(estimator == "BAYES") {
     al.pw <- gsub("Approximate Invariance \\(Noninvariance\\) Holds For Groups:", 
                   "Approximate Measurement Invariance Holds For Groups:", 
-                  al.pw) 
+                  al.pw)
   }
   al.pw.list <-strsplit(al.pw, " Approximate Measurement Invariance Holds For Groups:")
   
@@ -215,6 +254,7 @@ mean.comp <- lapply(mean.comp, function(x) {
   })
 
   output[["alignment.output"]] <- align.outp
+  }
   
   # Summaries
   
