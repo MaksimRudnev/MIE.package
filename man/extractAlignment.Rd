@@ -4,7 +4,12 @@
 \alias{extractAlignment}
 \title{Extracts summaries from Mplus alignment output file}
 \usage{
-extractAlignment(file = "fixed.out", nice.tables = FALSE, silent = FALSE)
+extractAlignment(
+  file = "fixed.out",
+  nice.tables = FALSE,
+  silent = FALSE,
+  what = c("summary", "ranking", "comparisons")
+)
 }
 \arguments{
 \item{file}{filename of the Mplus alignment output file}
