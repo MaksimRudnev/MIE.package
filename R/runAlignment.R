@@ -44,7 +44,7 @@ runAlignment <- function(
   categorical=NULL,
   sim.samples = c(100, 500, 1000), 
   sim.reps = 500,
-  Mplus_com = "mplus",
+  Mplus_com = "mplus", #/Applications/Mplus/mplus
   path = getwd(),
   summaries = FALSE,
   estimator="MLR",
@@ -56,6 +56,8 @@ runAlignment <- function(
   oldwd <- getwd()
   setwd(path)
   
+  
+  estimator <- toupper(estimator)
   
   message("Creating input for free alignment.\n")
   
@@ -106,6 +108,7 @@ runAlignment <- function(
   
 # Making up the syntax for alignment ####
 # 
+
   inp <- c("DATA:","\n",
            "   file = 'mplus_temp.tab';", "\n",
            "   LISTWISE = ", listwise, ";\n",
@@ -114,27 +117,32 @@ runAlignment <- function(
            "   missing = .;", "\n",
            ifelse(any(is.null(categorical)),
                   "\n",
-                  paste("   categorical = ", paste(categorical, collapse = " "), ";\n")
+                  paste("   categorical = ", paste(categorical, collapse = "\n"), ";\n")
            ),
-           
+           ifelse(estimator == "WLSMV", 
+                  paste(
+                   "   grouping = ", gsub("\\.", "_", group), "(", paste(list.of.groups, collapse = "\n")),
+            paste(
            "   classes = c(", ngroups, ");\n",
-           "   knownclass = c(", paste0(gsub("\\.", "_", group), " = ", list.of.groups, " \n    ", collapse=""),
+           "   knownclass = c(", paste0(gsub("\\.", "_", group), " = ", list.of.groups, " \n    ", collapse=""), collapse="\n")),
            
            ");\n\n",
            
            "ANALYSIS:\n",
-           "  type = mixture;\n",
+           ifelse(estimator == "WLSMV", "", 
+           "  type = mixture;\n"),
            "  estimator = ", estimator, ";\n",
            "  alignment =", kind = "", ";\n", 
            "  processors =", processors, ";\n",
-           ifelse(any(is.null(categorical)),
+           ifelse(any(is.null(categorical)) | estimator == "WLSMV",
                   "\n",  
                   "  algorithm = integration;\n\n"),
            
            "MODEL:\n",
-           "  %OVERALL%\n",
+           ifelse(estimator == "WLSMV", "", 
+           "  %OVERALL%\n"),
            model, 
-           "\n\n",
+           ";\n\n",
            
            "OUTPUT: align tech8 SVALUES;", 
            "\n\n",
@@ -150,21 +158,33 @@ runAlignment <- function(
   cat(inp, file = "free.inp", sep="")
   
   # Running free alignment ####
-  message("Run free in Mplus.")
+  message("Running free alignment in Mplus.")
   trash <- system(paste(Mplus_com, "free.inp"))
   
-  
+  version <- system(paste(Mplus_com, "-version"), intern=T)
+  version <- sub("^Mplus VERSION  *(.*?) *\\s.*", "\\1", version)
   # Reading free, making a fixed alignment syntax ####
   
   outFree <- paste(readLines("free.out"), collapse = "\n") 
   if(grepl("TO AVOID MISSPECIFICATION USE THE GROUP WITH VALUE", outFree)) {
+    
+    
     refGroup <- sub(".*TO AVOID MISSPECIFICATION USE THE GROUP WITH VALUE *(.*?) *AS THE BASELINE GROUP.*", "\\1", outFree)
+    
   } else {
     
+    
+    if(version == "8.8" & estimator != "BAYES") {
+      
+      free.tab.means <- sub(".*SIGNIFICANCE LEVEL IN DESCENDING ORDER *(.*?) *MODEL COMMAND WITH FINAL ESTIMATES USED AS STARTING VALUES.*", "\\1", outFree)
+      refGroup <- as.character(read.table(text=sub(".*\n *(.*?) *\n\n\n\n\n.*", "\\1", free.tab.means))[3])
+      
+    } else {
+      
     free.tab.means <- sub(".*FACTOR MEAN COMPARISON AT THE 5% SIGNIFICANCE LEVEL IN DESCENDING ORDER *(.*?) *QUALITY OF NUMERICAL RESULTS.*", "\\1", outFree)
     refGroup <- as.character(read.table(text=sub(".*\n *(.*?) *\n\n\n\n\n.*", "\\1", free.tab.means))[3])
     
-    
+    }
   }
   
   inp["kind"]<-paste0("FIXED(", refGroup, ")")
@@ -204,7 +224,7 @@ runAlignment <- function(
     #..writing code for simulations####
     
     for(x in sim.samples) { 
-      code <- c("MONTECARLO:",
+      code <- c("MONTECARLO:", "\n",
                 " NAMES = ", paste(gsub("\\.", "_", var.list), collapse = " "), ";\n",
                 " ngroups = ", ngroups, ";\n", 
                 " NOBSERVATIONS =", ngroups, "(", x, ");\n", 
@@ -218,22 +238,39 @@ runAlignment <- function(
                 
                 
                 
-                "ANALYSIS:",
-                "  TYPE = MIXTURE;",
+                "ANALYSIS:\n",
+                ifelse(estimator == "WLSMV", "",
+                "  TYPE = MIXTURE;\n"),
                 "  alignment = ", "FIXED(", refGroup, ");\n",
                 "  estimator = ", estimator, ";\n",
                 "  processors =", processors, ";\n",
                 
-                ifelse(any(is.null(categorical)),
+                ifelse(any(is.null(categorical)) | estimator == "WLSMV",
                        "\n",  
                        " algorithm = integration;\n\n"),
                 
                 "MODEL POPULATION:",
-                " %OVERALL%\n",
-                paste(stValues, collapse="\n"),
+                ifelse(estimator == "WLSMV", "",
+                       " %OVERALL%\n"),
+                ifelse(estimator == "WLSMV", 
+                       {
+                         gsub(" %", "MODEL ", stValues) %>%
+                           gsub("%|#", "", .) %>%
+                           paste(., collapse="\n") 
+                         },
+                       paste(stValues, collapse="\n")
+                ),
                 "\nMODEL:",
-                " %OVERALL%\n",
-                paste(stValues, collapse="\n")
+                ifelse(estimator == "WLSMV", "",
+                       " %OVERALL%\n"),
+                ifelse(estimator == "WLSMV", 
+                       {
+                         gsub(" %", "MODEL ", stValues) %>%
+                           gsub("%|#", "", .) %>%
+                           paste(collapse="\n") 
+                       },
+                       paste(stValues, collapse="\n")
+                )
       )
       cat(code, sep="", file = paste0("sim", x , ".inp"))
     }
