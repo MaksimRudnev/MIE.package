@@ -318,29 +318,29 @@ add_custom_covs <- function(model, group, data, cov, focal.groups) {
 #' @param model character, lavaan syntax model
 #' @param group character, grouping variable
 #' @param data data frame
-#' @param clusters A list of character vectors of the group names to create clusters.
-#' @param parameters character vector, "all", "loadings", "thresholds", or "intercepts". Clusters are applied to this subset of parameters.
+#' @param strata A list of character vectors of the group names to create strata.
+#' @param parameters character vector, "all", "loadings", "thresholds", or "intercepts". strata are applied to this subset of parameters.
 #' @examples clusteredMI("F =~ v1 + v2 + v3 + v4", 
 #'          group = "country", 
 #'          data = Dat1, 
-#'          clusters = list(North = c("Norway", "Denmark", "Finland"), 
+#'          strata = list(North = c("Norway", "Denmark", "Finland"), 
 #'                          South = c("Spain", "Portugal", "Italy")
 #'                          )
 #'           )
 #'
 #' @export
 
-clusteredMI <- function(model, group, data, clusters, parameters = c("loadings", "intercepts"), ref = "configural", additional = c("scalar"), ...) {
+stratifiedMI <- function(model, group, data, strata, parameters = c("loadings", "intercepts"), ref = "configural", additional = c("scalar"), ...) {
   
   config = cfa(model=model, data=data,  group=group,  do.fit = F, ...)
   model2 <- lavaanify(model, ngroups = lavInspect(config, "ngroups"), meanstructure = T, auto=T)
   op <- c("loadings" = "=~","intercepts" = "~1", "thresholds"= "|")[parameters]
   labs <- lavInspect(config, "group.label")
   
-  for(m in names(clusters) ) {
-    if(length(clusters[[m]])>1) {
+  for(m in names(strata) ) {
+    if(length(strata[[m]])>1) {
       
-      groupings = combn(match(clusters[[m]], labs), 2)
+      groupings = combn(match(strata[[m]], labs), 2)
       for(i in 1:ncol(groupings)) {
         labs1 = model2[model2$group==groupings[1,i] & model2$op %in% op & model2$free!=0, "plabel" ]
         labs2 = model2[model2$group==groupings[2,i] & model2$op %in% op & model2$free!=0, "plabel" ]
@@ -370,12 +370,12 @@ clusteredMI <- function(model, group, data, clusters, parameters = c("loadings",
     #   model2$group != 1
     
     # remove constraints on means
-    first.groups.in.clusters <- sapply(clusters, function(x) x[[1]])
-    first.group.not.in.cluster <- labs[ !labs %in% as.vector(unlist(clusters))]
+    first.groups.in.strata <- sapply(strata, function(x) x[[1]])
+    first.group.not.in.cluster <- labs[ !labs %in% as.vector(unlist(strata))]
     if(length(first.group.not.in.cluster)>0) {
-      first.groups <- c(first.groups.in.clusters, first.group.not.in.cluster)
+      first.groups <- c(first.groups.in.strata, first.group.not.in.cluster)
     } else {
-      first.groups <- first.groups.in.clusters
+      first.groups <- first.groups.in.strata
     }
     
     means.except.1.group <- 

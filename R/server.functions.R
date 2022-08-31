@@ -366,7 +366,7 @@ MGCFAparameters <- function(model=NULL,
       old_option <- getOption("show.error.messages")
       options(show.error.messages = FALSE)
       
-      cfa.argument.list <- c(extra.options, list(model=model, data=data, group=group, group.equal=constraint))
+      cfa.argument.list <- append(list(model=model, data=data, group=group, group.equal=constraint), extra.options)
       
       mod<-try(do.call("cfa",  cfa.argument.list, quote = FALSE), silent=TRUE)
       options(show.error.messages = TRUE) 

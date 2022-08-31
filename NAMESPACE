@@ -2,7 +2,6 @@
 
 export(MGCFAparameters)
 export(add_custom_covs)
-export(clusteredMI)
 export(computeCorrelation)
 export(computeCovariance)
 export(extractAlignment)
@@ -23,3 +22,4 @@ export(plotCutoff)
 export(plotDistances)
 export(runAlignment)
 export(runMIE)
+export(stratifiedMI)
