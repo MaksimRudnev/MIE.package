@@ -306,10 +306,12 @@ if(estimator=="MLR") {
       f.contrib.l <-  sub(".* Fit Function Loadings Contribution By Variable *(.*?) *Fit Function Loadings Contribution By Group.*", "\\1", tech8.align)
       f.contrib.i <-  sub(".* Fit Function Intercepts Contribution By Variable *(.*?) *Fit Function Intercepts Contribution By Group.*", "\\1", tech8.align)
       
+    if(length(f.contrib.i)>0) {
+      
       contrib.i.tab <- read.table(text=f.contrib.i)
       contrib.l.tab <- read.table(text=f.contrib.l)
       contrib <- unname(c(unlist(contrib.i.tab), unlist(contrib.l.tab)))
-      
+    
       # names(contrib) <- c( 
       #   paste("Intercept", unlist(loading.names.by.factor[[x]])),
       #   paste("Loadings", loading.names.by.factor[[x]])
@@ -323,7 +325,7 @@ if(estimator=="MLR") {
       if(nrow(contrib.l.tab)>length(nmz.loadings)) {
         contrib.l.tab <- contrib.l.tab[!duplicated(contrib.l.tab),]
         contrib <- unname(c(unlist(contrib.i.tab), unlist(contrib.l.tab)))
-      }
+      
       
       names(contrib) <- c(nmz.th.int, nmz.loadings)
       
@@ -331,7 +333,7 @@ if(estimator=="MLR") {
                                #             Factor = rep(f.names[1], length(contrib)), 
                                #             row.names = names(contrib),
                                stringsAsFactors = F)
-      
+      }
       # })
       
       # f.names <- sapply(tech8.align, function(x) substr(x, 1, regexpr("\n", x)-1))
@@ -349,6 +351,7 @@ if(estimator=="MLR") {
       
       output$summary <- output$summary #[order(output$summary$Factor),]
     }
+      }
   }
   
   

@@ -3,16 +3,16 @@
 #' @param model Model in lavaan syntax
 #' @param data The data
 #' @param group Character. Grouping variable.
-#' @param out Character. "fit" returns some fit indices for every group; "models" list of entire fittted models.
-#' @param what Fit indices to print in case out="fit". Possible values: "cfi", "rmsea", "chisq", "mod" (parameter with the largest modification index and its value).
+#' @param out Legacy argument, keeps only `fit` or `models` parts of the model.
+#' @param what Fit indices to print and return. Possible values are any fit measures retruend by `fitmeasures()`, a special value `mod` adds a parameter with the largest modification index and its MI value.
 #' @param ... Other arguments passed to lavaan::cfa
 #'
 #' @export
 
 
-groupwiseCFA <- function(model,  data, group, ..., out = c("fit", "models"),
+groupwiseCFA <- function(model,  data, group, ..., out = NULL,
                          what  = c("cfi", "rmsea", "chisq", "mod")) {
-  
+
   if(length(data[, group])==1) {
     group.names = na.omit(unique(data[, group][[1]])) 
   } else {
@@ -26,40 +26,67 @@ groupwiseCFA <- function(model,  data, group, ..., out = c("fit", "models"),
   
   names(fit.list)<- group.names
   
-  if("fit" %in% out) { 
   tb.countrywise <- lapply(fit.list, function(x) {
-    if(x@optim$converged) fm = fitMeasures(x)
-    if(x@optim$converged & "mod" %in% what) mi = modindices(x, sort = T)
+    conv = lavInspect(x, "converged")
     
-    data.frame(
-      converged = x@optim$converged, 
-      CFI=      ifelse (x@optim$converged & "cfi" %in% what, fm["cfi"],  NA),
-      RMSEA=    ifelse (x@optim$converged & "rmsea" %in% what, fm["rmsea"],NA),
-      CHI.sq =  ifelse (x@optim$converged & "chisq" %in% what, fm["chisq"],NA),
-      Pvalue =  ifelse (x@optim$converged & "chisq" %in% what, fm["pvalue"],NA),
-      mod.ind=  ifelse (x@optim$converged & "mod" %in% what,  paste(mi[1,1:3], collapse = ""), ""),
-      mod.ind.v=ifelse (x@optim$converged & "mod" %in% what,  round(mi[1,4]), ""),
-      N = nobs(x),
-      stringsAsFactors = F)
+    if(conv) fm.all = fitMeasures(x)
+    
+    fm = lapply(setNames(nm=what[what !="mod"]), 
+                function(w) {
+                  if(conv)
+                    ifelse(w %in% names(fm.all), fm.all[[w]],  NA) 
+                  else
+                    return(NA)
+                  })
+    
+    if("mod" %in% what) { 
+        if(conv) mi = modindices(x, sort = T)
+        fm$mod.ind =  ifelse(conv, gsub("~~",  " W ",  paste(mi[1,1:3], collapse = "")), NA)
+        fm$mod.ind.v = ifelse(conv, round(mi[1,4]), NA)
+      }
+
+    fm = append(fm, setNames(conv, nm = "converged"), after = 0)
+    fm$N = nobs(x)
+    
+    return(as.data.frame(fm))
+  
+    # data.frame(
+    #     converged = conv, #x@optim$converged, 
+    #     CFI=      ifelse (conv & "cfi" %in% what, fm["cfi"],  NA),
+    #     RMSEA=    ifelse (conv & "rmsea" %in% what, fm["rmsea"],NA),
+    #     CHI.sq =  ifelse (conv & "chisq" %in% what, fm["chisq"],NA),
+    #     Pvalue =  ifelse (conv & "chisq" %in% what, fm["pvalue"],NA),
+    #     mod.ind=  ifelse (conv & "mod" %in% what,  paste(mi[1,1:3], collapse = ""), ""),
+    #     mod.ind.v=ifelse (conv & "mod" %in% what,  round(mi[1,4]), ""),
+    #     N = nobs(x)
+    #     )
     
     })
+  #print(tb.countrywise)
   tb.countrywise1 <- Reduce("rbind", tb.countrywise)
   rownames(tb.countrywise1) <- names(tb.countrywise)
-  tb.countrywise1
-  tb.countrywise1$mod.ind <-  gsub("~~",  " W ",  tb.countrywise1$mod.ind )
-  }
+
+  # print some fits
+  b=tb.countrywise1[order(tb.countrywise1[,grepl("cfi", colnames(tb.countrywise1))], 
+                          decreasing=T), 
+                    grepl("cfi|rmsea|pvalue|srmr|mod|N", colnames(tb.countrywise1))]
+  # b$CFI    <- round(b$CFI, 3)
+  # b$RMSEA  <- round(b$RMSEA, 3)
+  # b$CHI.sq <- round(b$CHI.sq, 2)
+  # b$Pvalue <- round(b$Pvalue, 3)
+  print(b, digits=2, print.gap = 3)
   
-  if("models" %in% out) return(fit.list)
-  if("fit" %in% out) { 
-    b=tb.countrywise1[order(tb.countrywise1$CFI, decreasing=T), 
-                      c("CFI", "RMSEA", "CHI.sq", "Pvalue")]
-    b$CFI <- round(b$CFI, 2)
-    b$RMSEA <- round(b$RMSEA, 2)
-    b$CHI.sq <- round(b$CHI.sq, 2)
-    b$Pvalue <- round(b$Pvalue, 3)
-    print(b)
-    invisible(tb.countrywise1)
+  if(!is.null(out)) {
+    if(out == "fit") 
+      invisible(tb.countrywise1)
+      else if(out == "models")
+        invisible(fit.list)
+    
+  } else  {
+    invisible(list(fit = tb.countrywise1, 
+                   models = fit.list))
   }
+        
 }
 
 #' Get more comprehensible output from lavTestScore
