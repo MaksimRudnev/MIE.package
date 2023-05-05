@@ -347,7 +347,10 @@ add_custom_covs <- function(model, group, data, cov, focal.groups) {
 #' @param data data frame
 #' @param strata A list of character vectors of the group names to create strata.
 #' @param parameters character vector, "all", "loadings", "thresholds", or "intercepts". strata are applied to this subset of parameters.
-#' @examples clusteredMI("F =~ v1 + v2 + v3 + v4", 
+#' @details
+#' This function builds a single model with constraints applied to subsets of groups, and compares it to the reference model (less constrained) as well as to global invariance tests.
+#' 
+#' @examples stratifiedMI("F =~ v1 + v2 + v3 + v4", 
 #'          group = "country", 
 #'          data = Dat1, 
 #'          strata = list(North = c("Norway", "Denmark", "Finland"), 
@@ -357,7 +360,9 @@ add_custom_covs <- function(model, group, data, cov, focal.groups) {
 #'
 #' @export
 
-stratifiedMI <- function(model, group, data, strata, parameters = c("loadings", "intercepts"), ref = "configural", additional = c("scalar"), ...) {
+stratifiedMI <- function(model, group, data, strata, parameters = c("loadings", "intercepts"), ref = "configural",  ...) {
+  
+  #additional = c("scalar"),
   
   config = cfa(model=model, data=data,  group=group,  do.fit = F, ...)
   model2 <- lavaanify(model, ngroups = lavInspect(config, "ngroups"), meanstructure = T, auto=T)
@@ -424,17 +429,17 @@ stratifiedMI <- function(model, group, data, strata, parameters = c("loadings", 
     scalar     = cfa(model=model, data=data,  group=group, group.equal = c("loadings", "intercepts", "thresholds"), ...)
     )
   
-  if(length(additional)==0) {
-    
-      LittleHelpers::lav_compare(fits[[ref]], fits[["clustered"]])
-  
-    } else if(length(additional)==1) {
-    
-      LittleHelpers::lav_compare(fits[[ref]], fits[["clustered"]], fits[[additional]])
-    } else if(length(additional)==2) {
-      LittleHelpers::lav_compare(fits[[ref]], fits[["clustered"]], 
-                                 fits[[additional[1]]], fits[[additional[2]]])
-    }
+  # if(length(additional)==0) {
+  #   
+       LittleHelpers::lav_compare(fits[[ref]], fits[["clustered"]])
+  # 
+  #   } else if(length(additional)==1) {
+  #   
+  #     LittleHelpers::lav_compare(fits[[ref]], fits[["clustered"]], fits[[additional]])
+  #   } else if(length(additional)==2) {
+  #     LittleHelpers::lav_compare(fits[[ref]], fits[["clustered"]], 
+  #                                fits[[additional[1]]], fits[[additional[2]]])
+  #   }
   
   invisible(fits)
   

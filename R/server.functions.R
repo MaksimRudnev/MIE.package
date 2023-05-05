@@ -7,7 +7,7 @@
 #' @param ... Formula, group, and all the other eligible arguments of \code{\link[lavaan]{cfa}} function.
 #'
 #' @export
-globalMI <- function(..., chi.sq=FALSE, omit = "") {
+globalMI <- function(..., chi.sq=FALSE, omit = "", what = c("cfi", "tli", "rmsea", "srmr", "chisq")) {
   
   fake.mdl <- lavaan::cfa(..., do.fit=F)
   
@@ -56,7 +56,7 @@ globalMI <- function(..., chi.sq=FALSE, omit = "") {
   
 
     
-  fit.mes.index = c("cfi", "tli", "rmsea", "srmr", "chisq", "df")
+  fit.mes.index = what
   if( all( c("cfi.scaled", "tli.scaled", "rmsea.scaled")  %in% 
            names(lavaan::fitMeasures(mdls[[1]]  ))))
     fit.mes.index <- append(fit.mes.index, c("cfi.scaled", "tli.scaled", "rmsea.scaled", "chisq.scaled"))
