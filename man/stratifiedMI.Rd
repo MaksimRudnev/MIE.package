@@ -11,7 +11,6 @@ stratifiedMI(
   strata,
   parameters = c("loadings", "intercepts"),
   ref = "configural",
-  additional = c("scalar"),
   ...
 )
 }
@@ -29,8 +28,11 @@ stratifiedMI(
 \description{
 Run clustered measurement invariance tests
 }
+\details{
+This function builds a single model with constraints applied to subsets of groups, and compares it to the reference model (less constrained) as well as to global invariance tests.
+}
 \examples{
-clusteredMI("F =~ v1 + v2 + v3 + v4", 
+stratifiedMI("F =~ v1 + v2 + v3 + v4", 
          group = "country", 
          data = Dat1, 
          strata = list(North = c("Norway", "Denmark", "Finland"), 

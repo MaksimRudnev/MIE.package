@@ -76,6 +76,8 @@ groupwiseCFA <- function(model,  data, group, ..., out = NULL,
   # b$Pvalue <- round(b$Pvalue, 3)
   print(b, digits=2, print.gap = 3)
   
+  class(fit.list) <- append(class(fit.list) , "groupwiseCFA")
+  
   if(!is.null(out)) {
     if(out == "fit") 
       invisible(tb.countrywise1)
@@ -88,6 +90,33 @@ groupwiseCFA <- function(model,  data, group, ..., out = NULL,
   }
         
 }
+
+#' Summarize a list of CFAs produces by lavaan
+#'
+#' @param model.list A list of models in lavaan syntax. Can be an object of class groupwise.CFA
+#'
+#' @export
+summary.groupwiseCFA <- function(model.list) { # list of fitted CFAs
+  data.frame(
+    converged=ifelse(sapply(model.list, lavInspect, "converged"), "", "NO"),
+    corr.greater.1=sapply(model.list, function(x) 
+      ifelse(any(abs(lavInspect(x,"cor.lv"))>1), "YES", "")),
+    negat.lv.variance = sapply(model.list, function(x)
+      ifelse(any(diag(lavInspect(x, "cov.lv"))<0), "YES", "")),
+    negat.ov.variance = sapply(model.list, function(x)
+      ifelse(parameterestimates(x) %>%
+               dplyr::filter(lhs == rhs & op == "~~") %>%
+               dplyr::select(est) %>% `<`(0) %>% any, "YES", "")),
+    CFI = sapply(model.list, function(x) 
+      ifelse(lavInspect(x, "converged"),fitmeasures(x)[["cfi"]], NA)),
+    RMSEA = sapply(model.list, function(x) 
+      ifelse(lavInspect(x, "converged"),fitmeasures(x)[["rmsea"]], NA)),
+    SRMR = sapply(model.list, function(x) 
+      ifelse(lavInspect(x, "converged"),fitmeasures(x)[["srmr"]], NA))
+  ) }
+
+
+
 
 #' Get more comprehensible output from lavTestScore
 #'

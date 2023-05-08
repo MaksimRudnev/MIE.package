@@ -9,7 +9,7 @@ groupwiseCFA(
   data,
   group,
   ...,
-  out = c("fit", "models"),
+  out = NULL,
   what = c("cfi", "rmsea", "chisq", "mod")
 )
 }
@@ -22,9 +22,9 @@ groupwiseCFA(
 
 \item{...}{Other arguments passed to lavaan::cfa}
 
-\item{out}{Character. "fit" returns some fit indices for every group; "models" list of entire fittted models.}
+\item{out}{Legacy argument, keeps only `fit` or `models` parts of the model.}
 
-\item{what}{Fit indices to print in case out="fit". Possible values: "cfi", "rmsea", "chisq", "mod" (parameter with the largest modification index and its value).}
+\item{what}{Fit indices to print and return. Possible values are any fit measures retruend by `fitmeasures()`, a special value `mod` adds a parameter with the largest modification index and its MI value.}
 }
 \description{
 Run the same cfa within every group and extract fit indices

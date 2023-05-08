@@ -4,7 +4,12 @@
 \alias{globalMI}
 \title{Test for measureent invariance in three steps}
 \usage{
-globalMI(..., chi.sq = FALSE, omit = "")
+globalMI(
+  ...,
+  chi.sq = FALSE,
+  omit = "",
+  what = c("cfi", "tli", "rmsea", "srmr", "chisq")
+)
 }
 \arguments{
 \item{...}{Formula, group, and all the other eligible arguments of \code{\link[lavaan]{cfa}} function.}
