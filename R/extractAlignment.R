@@ -53,7 +53,13 @@ extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = 
       "FACTOR MEAN/INTERCEPT COMPARISON AT THE 5% SIGNIFICANCE LEVEL IN DESCENDING ORDER", 
       "\n\n\n\n\n", b.string)
     
-  } else {
+  } else if(mplus.version == "8.9" & estimator!="BAYES" ) {
+    
+    mean.comparison <- extractBetween(
+      "FACTOR INTERCEPT COMPARISON AT THE 5% SIGNIFICANCE LEVEL IN DESCENDING ORDER", 
+      "\n\n\n\n\n", b.string)
+    
+   } else {
     
     mean.comparison <- extractBetween(
       "FACTOR MEAN COMPARISON AT THE 5% SIGNIFICANCE LEVEL IN DESCENDING ORDER", 
@@ -130,7 +136,7 @@ mean.comp <- lapply(mean.comp, function(x) {
   align.outp <- extractBetween("ALIGNMENT OUTPUT", "Average Invariance index", b.string)
   #separate intercepts/thresholds and loadings
 
-  if(mplus.version == "8.8" & estimator!="BAYES") { 
+  if(mplus.version %in% c("8.8", "8.9") & estimator!="BAYES") { 
     
       align.outp1 <- strsplit(align.outp, "\n\n\n Loadings for ", fixed=T)[[1]]
      
@@ -325,15 +331,15 @@ if(estimator=="MLR") {
       if(nrow(contrib.l.tab)>length(nmz.loadings)) {
         contrib.l.tab <- contrib.l.tab[!duplicated(contrib.l.tab),]
         contrib <- unname(c(unlist(contrib.i.tab), unlist(contrib.l.tab)))
-      
+      }
       
       names(contrib) <- c(nmz.th.int, nmz.loadings)
-      
+    
       fit.contrib = data.frame(Fit.contribution = contrib, 
                                #             Factor = rep(f.names[1], length(contrib)), 
                                #             row.names = names(contrib),
                                stringsAsFactors = F)
-      }
+      
       # })
       
       # f.names <- sapply(tech8.align, function(x) substr(x, 1, regexpr("\n", x)-1))
