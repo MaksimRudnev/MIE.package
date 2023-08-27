@@ -370,9 +370,20 @@ if(estimator=="MLR") {
     nice.tab1 <- knitr::kable(output$non.invariant.pars, format = "html")
    trash <-  capture.output(kableExtra::kable_styling(nice.tab1, bootstrap_options=c("striped", "bordered"), position = "left", font_size = 12))
   }
-  print(paste("There are", sum(output$summary[,"N_noninvariant"]), 
+  
+  sum.noninv = sum(output$summary[,"N_noninvariant"])
+  n.params.total = sum(output$summary[,c("N_invariant", "N_noninvariant")])
+  
+  cat("\n",
+    paste("There are", sum.noninv, 
               "non-invariant parameters out of",
-              sum(output$summary[,"N_invariant"]), "which is", 
-              scales::percent(sum(output$summary[,"N_noninvariant"])/sum(output$summary[,"N_invariant"]) )))
+              n.params.total, 
+              "which is", 
+              scales::percent(sum.noninv/n.params.total),
+              ".\n This is", ifelse(sum.noninv/n.params.total < .25,
+                                   "smaller than the recommended cutoff of 25%, thereby the results support approximate invariance. Running simuations is still recommended.",
+                                   "greater than the recommended cutoff of 25%, thereby the results do NOT support approximate invariance. Running simulations is recommended for firther exploration.")
+              )
+        )
   invisible(output)
 }
