@@ -253,6 +253,7 @@ if(estimator=="MLR") {
       "R2" = R2,
       "Comparison of aligned pars to average" = inv.comparison,
       "N_noninvariant" = length(non.invariant.groups),
+      "N_invariant" = length(invariant.groups),
       "Invariant groups" = invariant.groups,
       "Non-invariant groups" = non.invariant.groups
     )
@@ -283,15 +284,17 @@ if(estimator=="MLR") {
   # Extract summaries: R2, aligned parameters, list of invariant and non-invariant groups #####
   
   summ <- 
-    t(sapply(align.outp, function(x)  c(AlignedParameter = x[["Aligned parameter"]],
+    lapply(align.outp, function(x)  data.frame(AlignedParameter = x[["Aligned parameter"]],
                                         R2 = x[["R2"]], 
-                                        N_nonvariant = x[["N_noninvariant"]],
+                                        N_invariant = x[["N_invariant"]],
+                                        N_noninvariant = x[["N_noninvariant"]],
                                         invariant.gr = paste(x[["Invariant groups"]], collapse=" "), 
-                                        non.invar.gr = paste(x[["Non-invariant groups"]], collapse = " "))))
+                                        non.invar.gr = paste(x[["Non-invariant groups"]], collapse = " ")))
   
+  summ1 <- Reduce("rbind", summ)
+  rownames(summ1) <- names(summ)
   
-  
-  output[["summary"]] <- summ
+  output[["summary"]] <- summ1
   
   
   # Fit contribution ######
@@ -362,10 +365,14 @@ if(estimator=="MLR") {
   
   
   # Printing output
-  if(!silent) print(output$summary, row.names=FALSE)
+  if(!silent) print(output$summary, row.names=T)
   if(nice.tables && !silent) {
     nice.tab1 <- knitr::kable(output$non.invariant.pars, format = "html")
    trash <-  capture.output(kableExtra::kable_styling(nice.tab1, bootstrap_options=c("striped", "bordered"), position = "left", font_size = 12))
   }
+  print(paste("There are", sum(output$summary[,"N_noninvariant"]), 
+              "non-invariant parameters out of",
+              sum(output$summary[,"N_invariant"]), "which is", 
+              scales::percent(sum(output$summary[,"N_noninvariant"])/sum(output$summary[,"N_invariant"]) )))
   invisible(output)
 }

@@ -8,7 +8,7 @@
 # TO develop: errors handlers; 
 # Speed of pairwise (think of what can be done with non-pairwise)
 
-#dat<-simMGCFA
+
 
 requireNamespace("shiny", quietly = T)
 requireNamespace("lavaan", quietly = T)
