@@ -30,13 +30,15 @@ runAlignment(
 
 \item{sim.samples}{Vector of integers. Group sample sizes for simulation,  the length of this vector also determines  a number of simulation studies. Default is `c(100, 500, 1000)`. May take a substantial amount of time. Use NULL to avoid running simulations.}
 
-\item{sim.reps}{A number of simulated datasets in each simulation. Default is 500.}
+\item{sim.reps}{A number of simulated datasets in each simulation. Default is 500. Use 0 to avoid running simulations.}
 
 \item{Mplus_com}{Sometimes you don't have a direct access to Mplus, so this argument specifies what to send to a system command line. Default value is "mplus".}
 
 \item{path}{Where all the .inp, .out, and .dat files should be stored?}
 
 \item{summaries}{If the \code{\link[MIE]{extractAlignment}}     and \code{\link[MIE]{extractAlignmentSim}}    should be run after all the Mplus work is done. Default is FALSE.}
+
+\item{estimator}{Could be any estimator supported by Mplus. Default is "MLR".}
 }
 \description{
 Facilitates running frequentist alignmnet procedure in Mplus. It creates Mplus input and data from R data.frame, runs the input using Mplus, and provides its summaries back in R.

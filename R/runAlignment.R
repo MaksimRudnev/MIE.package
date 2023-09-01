@@ -7,10 +7,11 @@
 #' @param dat Data frame containing data. 
 #' @param categorical Character vector of variable names. Indicators that are binary or ordinal. Default is NULL.
 #' @param sim.samples Vector of integers. Group sample sizes for simulation,  the length of this vector also determines  a number of simulation studies. Default is `c(100, 500, 1000)`. May take a substantial amount of time. Use NULL to avoid running simulations.
-#' @param sim.reps A number of simulated datasets in each simulation. Default is 500.
+#' @param sim.reps A number of simulated datasets in each simulation. Default is 500. Use 0 to avoid running simulations.
 #' @param Mplus_com  Sometimes you don't have a direct access to Mplus, so this argument specifies what to send to a system command line. Default value is "mplus".
 #' @param path Where all the .inp, .out, and .dat files should be stored?
 #' @param summaries If the \code{\link[MIE]{extractAlignment}}     and \code{\link[MIE]{extractAlignmentSim}}    should be run after all the Mplus work is done. Default is FALSE.
+#' @param estimator Could be any estimator supported by Mplus. Default is "MLR".
 #' @details The function runs in four steps to facilitate setting up and running alignment:
 #' \enumerate{
 #'     \item Converts data.drame into a dat file compatible with Mplus. Saves it on the disk.
@@ -174,7 +175,8 @@ runAlignment <- function(
   } else {
     
     
-    if(version == "8.8" & estimator != "BAYES") {
+    if(!version %in% c("8.9", "8.10") & 
+       estimator!="BAYES") {
       
       free.tab.means <- sub(".*SIGNIFICANCE LEVEL IN DESCENDING ORDER *(.*?) *MODEL COMMAND WITH FINAL ESTIMATES USED AS STARTING VALUES.*", "\\1", outFree)
       refGroup <- as.character(read.table(text=sub(".*\n *(.*?) *\n\n\n\n\n.*", "\\1", free.tab.means))[3])
@@ -194,7 +196,7 @@ runAlignment <- function(
   trash <- system(paste(Mplus_com, "fixed.inp"))
   
   # Creating simulations ####
-  if(!is.null(sim.samples)) {
+  if(!is.null(sim.samples) & sim.reps != 0) {
     
     # ..extracting population values from fixed alignmnetn output ####
     outFixed <- paste(readLines("fixed.out"), collapse = "\n") 

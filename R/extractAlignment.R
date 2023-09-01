@@ -43,17 +43,22 @@ extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = 
   mplus.version.system <- mplus.version[[3]] 
   mplus.version <- mplus.version[[2]]
 
+  if(!mplus.version %in% c("8.8", "8.9", "8.10"))
+    warning("Mplus versions 8.7 and earlier are not officially supported,
+    but trying to extract summary anyways.")
+  
   # output list to be filled
   output <- list()
   
   # Extract mean comparison ######
-  if(mplus.version == "8.8"  & estimator!="BAYES") {
+  if(!mplus.version %in% c("8.9", "8.10") & 
+     estimator!="BAYES") {
     
     mean.comparison <- extractBetween(
       "FACTOR MEAN/INTERCEPT COMPARISON AT THE 5% SIGNIFICANCE LEVEL IN DESCENDING ORDER", 
       "\n\n\n\n\n", b.string)
     
-  } else if(mplus.version == "8.9" & estimator!="BAYES" ) {
+  } else if(mplus.version %in% c("8.9", "8.10") & estimator!="BAYES" ) {
     
     mean.comparison <- extractBetween(
       "FACTOR INTERCEPT COMPARISON AT THE 5% SIGNIFICANCE LEVEL IN DESCENDING ORDER", 
@@ -355,7 +360,8 @@ if(estimator=="MLR") {
       # rownames(fit) <- fit$Group.1
       
       #fit.contrib <- Reduce("rbind", fit.contrib)
-      output$summary <- merge(summ, fit.contrib, 
+      output$summary <- merge(output[["summary"]], 
+                              fit.contrib, 
                               by = "row.names")
       
       output$summary <- output$summary #[order(output$summary$Factor),]
@@ -382,7 +388,7 @@ if(estimator=="MLR") {
               scales::percent(sum.noninv/n.params.total),
               ".\n This is", ifelse(sum.noninv/n.params.total < .25,
                                    "smaller than the recommended cutoff of 25%, thereby the results support approximate invariance. Running simuations is still recommended.",
-                                   "greater than the recommended cutoff of 25%, thereby the results do NOT support approximate invariance. Running simulations is recommended for firther exploration.")
+                                   "greater than the recommended cutoff of 25%, thereby the results do NOT support approximate invariance. Running simulations is recommended for further exploration.")
               )
         )
   invisible(output)

@@ -1,16 +1,17 @@
-# 
-# library(LittleHelpers)
-# library(MIE)
-# 
-# ess6 <- haven::read_sav("~/Dropbox/STAT/European Social Survey/Data/ESS6/ESS6e02_2.sav")
-# 
-# ess_trimmed <- ess6[, c( values$items, "cntry")]
-# class(ess_trimmed) <- "data.frame"
-# for(x in names(ess_trimmed)) attributes(ess_trimmed[,x])<-NULL
-# ess_trimmed$cntry <- as.factor(ess_trimmed$cntry)
-# 
-# ess_trimmed$country <- ess_trimmed$cntry
-# ess_trimmed$cntry <- NULL
+
+library(LittleHelpers)
+library(MIE)
+
+ess6 <- haven::read_sav("~/Library/Mobile Documents/com~apple~CloudDocs/DATA/European Social Survey/Data/ESS6/ESS6e02_2.sav")
+
+
+ess_trimmed <- ess6[, c( values$items, "cntry")]
+class(ess_trimmed) <- "data.frame"
+for(x in names(ess_trimmed)) attributes(ess_trimmed[,x])<-NULL
+ess_trimmed$cntry <- as.factor(ess_trimmed$cntry)
+
+ess_trimmed$country <- ess_trimmed$cntry
+ess_trimmed$cntry <- NULL
 # 
 # 
 # runMIE("F =~ impfree + iphlppl + ipsuces + ipstrgv", ess_trimmed[1:5000,], group="country")
@@ -52,5 +53,13 @@
 #    shiny=F, group="cntry", constraints = c("loadings", "intercepts"))
 # str(m1)
 
+
+runAlignment("F by impfree iphlppl ipsuces ipfrule",
+             categorical = c("impfree", "iphlppl", "ipsuces", "ipfrule"),
+             estimator = "WLSMV",
+             group = "country",
+             dat = ess_trimmed,
+             Mplus_com = "/Applications/Mplus/mplus", 
+             sim.samples = NULL)
 
 
