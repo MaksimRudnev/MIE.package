@@ -106,7 +106,7 @@ summary.groupwiseCFA <- function(model.list) { # list of fitted CFAs
     negat.ov.variance = sapply(model.list, function(x)
       ifelse(parameterestimates(x) %>%
                dplyr::filter(lhs == rhs & op == "~~") %>%
-               dplyr::select(est) %>% `<`(0) %>% any, "YES", "")),
+               dplyr::select(est) %>% `<`(., 0) %>% any, "YES", "")),
     CFI = sapply(model.list, function(x) 
       ifelse(lavInspect(x, "converged"),fitmeasures(x)[["cfi"]], NA)),
     RMSEA = sapply(model.list, function(x) 

@@ -63,3 +63,5 @@ runAlignment("F by impfree iphlppl ipsuces ipfrule",
              sim.samples = NULL)
 
 
+cfa.list <- groupwiseCFA("F =~ impfree + iphlppl + ipsuces + ipstrgv", ess_trimmed[1:5000,], group="country")
+cfa.list$models
