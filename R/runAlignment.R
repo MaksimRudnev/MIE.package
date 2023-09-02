@@ -103,7 +103,7 @@ runAlignment <- function(
   
   #var.list <- gsub("\\.", "_", var.list)
   
-  list.of.groups = unique(as.matrix(d[,1]))
+  list.of.groups = unique(na.omit(as.matrix(d[,1])))
   ngroups = length(list.of.groups)
   
   
@@ -175,7 +175,7 @@ runAlignment <- function(
   } else {
     
     
-    if(!version %in% c("8.9", "8.10") & 
+    if(!version %in% c("8.8") & 
        estimator!="BAYES") {
       
       free.tab.means <- sub(".*SIGNIFICANCE LEVEL IN DESCENDING ORDER *(.*?) *MODEL COMMAND WITH FINAL ESTIMATES USED AS STARTING VALUES.*", "\\1", outFree)
