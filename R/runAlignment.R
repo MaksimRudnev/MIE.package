@@ -1,6 +1,6 @@
 #' Run alignment procedure using Mplus
 #' 
-#' Facilitates running frequentist alignmnet procedure in Mplus. It creates Mplus input and data from R data.frame, runs the input using Mplus, and provides its summaries back in R.
+#' Facilitates running alignmnet procedure in Mplus. It creates Mplus input and data from R data.frame, runs the input using Mplus, and returns its summaries back in R.
 #' 
 #' @param model Character. Formula in Mplus format, e.g. "Factor1 BY item1 item2 item3 item4; item4 WITH item3;", see example.
 #' @param group Character, name of the grouping variable.
@@ -12,6 +12,8 @@
 #' @param path Where all the .inp, .out, and .dat files should be stored?
 #' @param summaries If the \code{\link[MIE]{extractAlignment}}     and \code{\link[MIE]{extractAlignmentSim}}    should be run after all the Mplus work is done. Default is FALSE.
 #' @param estimator Could be any estimator supported by Mplus. Default is "MLR".
+#' @param listwise `Listwise` option of  Mplus; whether the missing values should be deleted listwise. 
+#' @param processors `Processors` option of Mplus.
 #' @details The function runs in four steps to facilitate setting up and running alignment:
 #' \enumerate{
 #'     \item Converts data.drame into a dat file compatible with Mplus. Saves it on the disk.
@@ -39,18 +41,19 @@
 #'  
 #' @export
 runAlignment <- function(
-  model, 
-  group,
-  dat, 
-  categorical=NULL,
-  sim.samples = c(100, 500, 1000), 
-  sim.reps = 500,
-  Mplus_com = "mplus", #/Applications/Mplus/mplus
-  path = getwd(),
-  summaries = FALSE,
-  estimator="MLR",
-  listwise = "OFF",
-  processors=2
+    model, 
+    group,
+    dat, 
+    categorical=NULL,
+    sim.samples = c(100, 500, 1000), 
+    sim.reps = 500,
+    Mplus_com = "mplus", #/Applications/Mplus/mplus
+    path = getwd(),
+    summaries = FALSE,
+    estimator="MLR",
+    parameterization = NULL,
+    listwise = "OFF",
+    processors=2
 ) {
   
   # set working dirs ####
@@ -65,8 +68,8 @@ runAlignment <- function(
   #clean the model syntax, derive variables included ####
   var.list <- strsplit(model, ";|\n") [[1]]
   var.list <- gsub("\\s+", " ",  var.list)
-  var.list <-   var.list[!var.list==""]
-  var.list <-   var.list[!var.list==" "]
+  var.list <- gsub("!.*", "", var.list)
+  var.list <-   var.list[!var.list %in% c("", " ")]
   var.list <- gsub("^.*((by)|(BY))", "", var.list)
   #var.list <-   unlist(strsplit(var.list, "(?i)(by)", perl=TRUE))
   #var.list <-   unlist(strsplit(var.list[seq(2, length(var.list), by=2)], " "))
@@ -87,15 +90,23 @@ runAlignment <- function(
   for(i in colnames(d)) d[,i] <- unclass(d[,i])
   rm(i)
   
-  if(!is.numeric(d[,group])) {
-    #d[,group] <- gsub(" ", "_", as.character( d[,group] )  )
-    message("The group variable must be numeric!")
-    
-  }
+  # if(!is.numeric(d[,group])) {
+  #   #d[,group] <- gsub(" ", "_", as.character( d[,group] )  )
+  #   message("The group variable must be numeric!")
+  #   
+  # }
   
+  recoded.group <- as.numeric(as.factor(d[,group]))
+  
+  new.group.codes <- cbind(d[,group], recoded.group)[!duplicated(d[,group]),]
+  
+  d[,group] <- recoded.group
+  
+  
+  categorical <- categorical[categorical %in% var.list]
   
   # Writing data file ####
-    
+  
   #require(MplusAutomation)
   #inp <- capture.output(prepareMplusData(d,  "mplus_temp.tab"))
   
@@ -107,9 +118,9 @@ runAlignment <- function(
   ngroups = length(list.of.groups)
   
   
-# Making up the syntax for alignment ####
-# 
-
+  # Making up the syntax for alignment ####
+  # 
+  
   inp <- c("DATA:","\n",
            "   file = 'mplus_temp.tab';", "\n",
            "   LISTWISE = ", listwise, ";\n",
@@ -120,28 +131,38 @@ runAlignment <- function(
                   "\n",
                   paste("   categorical = ", paste(categorical, collapse = "\n"), ";\n")
            ),
+           "!   GROUP RECODINGS: \n ! OLD = NEW \n", 
+           paste("! ",  apply(new.group.codes, 1, paste, collapse = " = "), "\n"),
+           
            ifelse(estimator == "WLSMV", 
                   paste(
-                   "   grouping = ", gsub("\\.", "_", group), "(", paste(list.of.groups, collapse = "\n")),
-            paste(
-           "   classes = c(", ngroups, ");\n",
-           "   knownclass = c(", paste0(gsub("\\.", "_", group), " = ", list.of.groups, " \n    ", collapse=""), collapse="\n")),
+                    "   grouping = ", gsub("\\.", "_", group), "(", paste(list.of.groups, collapse = "\n")),
+                  paste(
+                    "   classes = c(", ngroups, ");\n",
+                    "   knownclass = c(", paste0(gsub("\\.", "_", group), " = ", list.of.groups, " \n    ", collapse=""), collapse="\n")),
            
            ");\n\n",
            
            "ANALYSIS:\n",
            ifelse(estimator == "WLSMV", "", 
-           "  type = mixture;\n"),
+                  "  type = mixture;\n"),
            "  estimator = ", estimator, ";\n",
            "  alignment =", kind = "", ";\n", 
            "  processors =", processors, ";\n",
-           ifelse(any(is.null(categorical)) | estimator == "WLSMV",
-                  "\n",  
-                  "  algorithm = integration;\n\n"),
+           ifelse(any(!is.null(categorical)) & estimator == "MLR",
+                  " algorithm = integration;\n\n",
+                  "\n"  
+           ),
+           ifelse(any(!is.null(parameterization)),
+                  paste(" parameterization =", parameterization, ";\n\n"),
+                  "\n"  
+           ),
+           
+           
            
            "MODEL:\n",
            ifelse(estimator == "WLSMV", "", 
-           "  %OVERALL%\n"),
+                  "  %OVERALL%\n"),
            model, 
            ";\n\n",
            
@@ -161,9 +182,12 @@ runAlignment <- function(
   # Running free alignment ####
   message("Running free alignment in Mplus.")
   trash <- system(paste(Mplus_com, "free.inp"))
+
   
-  version <- system(paste(Mplus_com, "-version"), intern=T)
-  version <- sub("^Mplus VERSION  *(.*?) *\\s.*", "\\1", version)
+  version <- MIE:::MplusVersion(Mplus_com)
+  
+  
+  
   # Reading free, making a fixed alignment syntax ####
   
   outFree <- paste(readLines("free.out"), collapse = "\n") 
@@ -183,9 +207,9 @@ runAlignment <- function(
       
     } else {
       
-    free.tab.means <- sub(".*FACTOR MEAN COMPARISON AT THE 5% SIGNIFICANCE LEVEL IN DESCENDING ORDER *(.*?) *QUALITY OF NUMERICAL RESULTS.*", "\\1", outFree)
-    refGroup <- as.character(read.table(text=sub(".*\n *(.*?) *\n\n\n\n\n.*", "\\1", free.tab.means))[3])
-    
+      free.tab.means <- sub(".*FACTOR MEAN COMPARISON AT THE 5% SIGNIFICANCE LEVEL IN DESCENDING ORDER *(.*?) *QUALITY OF NUMERICAL RESULTS.*", "\\1", outFree)
+      refGroup <- as.character(read.table(text=sub(".*\n *(.*?) *\n\n\n\n\n.*", "\\1", free.tab.means))[3])
+      
     }
   }
   
@@ -195,93 +219,14 @@ runAlignment <- function(
   message("Running fixed in Mplus.")
   trash <- system(paste(Mplus_com, "fixed.inp"))
   
-  # Creating simulations ####
+  # Running simulations ####
   if(!is.null(sim.samples) & sim.reps != 0) {
+    runAlignmentSim(file = "fixed.out", 
+                    sim.samples = sim.samples,
+                    sim.reps = sim.reps,
+                    Mplus_com = Mplus_com,
+                    summaries = FALSE)
     
-    # ..extracting population values from fixed alignmnetn output ####
-    outFixed <- paste(readLines("fixed.out"), collapse = "\n") 
-    
-    
-    stValues <- sub(".*MODEL COMMAND WITH FINAL ESTIMATES USED AS STARTING VALUES *(.*?) *\n\n\n\n.*", "\\1", outFixed)
-    stValues <- gsub("%C#", "%g#", stValues)
-    stValues <- gsub("c#", "g#", stValues)
-    
-    corrupt.code <- sub(".*%OVERALL% *(.*?) *%g#1%.*", "\\1", stValues)
-    correction <-strsplit(corrupt.code, "\n")[[1]]
-    correction <- correction[grep(" BY ",  correction)]
-    correction <- gsub(";", "*1;", correction)
-    
-    stValues <- paste(paste(correction, collapse="\n"), "\n", substr(stValues, regexpr("%g#1%", stValues), nchar(stValues)))
-    
-    if(!any(is.null(categorical))) {
-      g1 <- sub(".*%g#1% *(.*?) *%g#2%.*", "\\1", stValues)
-      g1 <- strsplit(g1, "\n")[[1]]
-      g1 <- g1[grep("\\[", g1)]
-      g1 <- g1[grep("\\$", g1)]
-      g1 <- sapply(g1 , function(x)   sub(" *\\[ *(.*?) *\\$.*", "\\1", x))
-      gen.cat <- paste0(names(table(g1)), " (", table(g1), ")")
-    }
-    
-    
-    #..writing code for simulations####
-    
-    for(x in sim.samples) { 
-      code <- c("MONTECARLO:", "\n",
-                " NAMES = ", paste(gsub("\\.", "_", var.list), collapse = " "), ";\n",
-                " ngroups = ", ngroups, ";\n", 
-                " NOBSERVATIONS =", ngroups, "(", x, ");\n", 
-                " NREPS =", sim.reps, ";\n\n",
-                ifelse(any(is.null(categorical)),
-                       "\n",  
-                       paste(
-                         " CATEGORICAL =", paste(categorical, collapse = " "), ";\n", 
-                         " GENERATE = ", paste(gen.cat, collapse = " "),
-                         ";\n\n"  )),
-                
-                
-                
-                "ANALYSIS:\n",
-                ifelse(estimator == "WLSMV", "",
-                "  TYPE = MIXTURE;\n"),
-                "  alignment = ", "FIXED(", refGroup, ");\n",
-                "  estimator = ", estimator, ";\n",
-                "  processors =", processors, ";\n",
-                
-                ifelse(any(is.null(categorical)) | estimator == "WLSMV",
-                       "\n",  
-                       " algorithm = integration;\n\n"),
-                
-                "MODEL POPULATION:",
-                ifelse(estimator == "WLSMV", "",
-                       " %OVERALL%\n"),
-                ifelse(estimator == "WLSMV", 
-                       {
-                         gsub(" %", "MODEL ", stValues) %>%
-                           gsub("%|#", "", .) %>%
-                           paste(., collapse="\n") 
-                         },
-                       paste(stValues, collapse="\n")
-                ),
-                "\nMODEL:",
-                ifelse(estimator == "WLSMV", "",
-                       " %OVERALL%\n"),
-                ifelse(estimator == "WLSMV", 
-                       {
-                         gsub(" %", "MODEL ", stValues) %>%
-                           gsub("%|#", "", .) %>%
-                           paste(collapse="\n") 
-                       },
-                       paste(stValues, collapse="\n")
-                )
-      )
-      cat(code, sep="", file = paste0("sim", x , ".inp"))
-    }
-    
-    for (x in sim.samples) {
-      message("Run simulation", x, "in Mplus.\n")
-      trash <- system(paste(Mplus_com, paste0("sim", x, ".inp")))
-      
-    }
   }
   
   # Return summaries
@@ -325,4 +270,191 @@ runAlignment <- function(
   
   setwd(oldwd)
   if(summaries) invisible(otpt)
+}
+
+
+#' Creates Mplus code for alignment simulations and optionally runs it and returns its summaries back to R.
+#' 
+#' @param model Path to the fixed alignment Mplus output file.
+#' @param sim.samples Vector of integers. Group sample sizes for simulation,  the length of this vector also determines  a number of simulation studies. Default is `c(100, 500, 1000)`. May take a substantial amount of time. Use NULL to avoid running simulations.
+#' @param sim.reps A number of simulated datasets in each simulation. Default is 500. Use 0 to avoid running simulations.
+#' @param Mplus_com  Sometimes you don't have a direct access to Mplus, so this argument specifies what to send to a system command line. Default value is "mplus".
+#' @param path Where all the .inp, .out, and .dat files should be stored?
+#' @param summaries If the \code{\link[MIE]{extractAlignmentSim}} should be run after all the Mplus work is done. Default is FALSE.
+#' @export
+runAlignmentSim <- function(file, 
+                            sim.samples = c(100, 500, 1000), 
+                            sim.reps = 500,
+                            Mplus_com = "mplus", #/Applications/Mplus/mplus
+                            path = getwd(),
+                            summaries = TRUE,
+                            run = TRUE,
+                            processors = 2) {
+  
+  
+if(!run)  summaries <- FALSE
+
+extr.model <-  extractAlignment(file, silent = T)
+
+
+
+if(any(grepl("Threshold", row.names(extr.model$summary )))) {
+  thresholds = row.names(extr.model$summary )[grepl("Threshold", row.names(extr.model$summary ))]
+  categorical <- unique(gsub("Threshold |\\$\\d", "", thresholds))
+} else {
+  categorical <- NULL
+}
+
+
+estimator = extr.model$extra$estimator
+ngroups = extr.model$summary$N_invariant[[1]] + extr.model$summary$N_noninvariant[[1]]
+refGroup = extr.model$mean.comparison[[1]][
+  extr.model$mean.comparison[[1]]$Factor.mean==0, "Group.value"]
+var.list = extr.model$extra$var.list
+parameterization = extr.model$extra$parameterization
+
+
+# ..extracting population values from fixed alignment output ####
+outFixed <- extr.model$extra$string # paste(readLines(model), collapse = "\n")
+
+stValues <- sub(".*MODEL COMMAND WITH FINAL ESTIMATES USED AS STARTING VALUES *(.*?) *\n\n\n\n.*", "\\1", outFixed)
+
+if(nchar(stValues)<100) 
+  stop("Couldn't find starting values. Make sure the alignment was run with 'OUTPUT: SVALUES;' enabled.")
+
+stValues <- gsub("%C#", "%g#", stValues)
+stValues <- gsub("c#", "g#", stValues)
+
+if (grepl("%OVERALL%", stValues) ) {
+  
+  corrupt.code <- sub(".*%OVERALL% *(.*?) *%g#1%.*", "\\1", stValues)
+  correction <-
+    strsplit(corrupt.code, "\n")[[1]]
+  correction <-
+    correction[grep(" BY ",  correction)]
+  correction <- gsub(";", "*1;", correction)
+  
+  stValues <-
+    paste(paste(correction, collapse = "\n"),
+          "\n",
+          substr(stValues, regexpr("%g#1%", stValues), nchar(stValues)))
+  
+} else {
+  
+  corrupt.code <- sub("(.*?) *MODEL 1.*", "\\1", stValues)
+  correction <- strsplit(corrupt.code, "\n")[[1]]
+  correction <- correction[grep(" BY ",  correction)]
+  correction <- gsub(";", "*1;", correction)
+  stValues <- paste(paste(correction, collapse = "\n"),
+                    "\n",
+                    substr(stValues, regexpr("MODEL 1", stValues), nchar(stValues)))
+}
+
+
+
+if(!any(is.null(categorical))) {
+  g1 <- sub(".*%g#1% *(.*?) *%g#2%.*", "\\1", stValues)
+  g1 <- strsplit(g1, "\n")[[1]]
+  g1 <- g1[grep("\\[", g1)]
+  g1 <- g1[grep("\\$", g1)]
+  g1 <- sapply(g1 , function(x)   sub(" *\\[ *(.*?) *\\$.*", "\\1", x))
+  gen.cat <- { 
+    q = data.frame(
+      thresholds = sapply(names(g1), function(x) gsub(".*\\$|\\*.*", "",  x)),
+      variables = trimws(gsub(".*\\[|\\$.*",  "", names(g1)))
+    )
+    
+    q2 = sapply(unique(q$variables), function(x) max(q[q$variables==x, "thresholds"]))
+    
+    paste0(names(q2), " (", q2, ")") }
+}
+
+
+#..writing code for simulations####
+
+for(x in sim.samples) { 
+  mpls.code <- c("MONTECARLO:", "\n",
+            " NAMES = ", paste(gsub("\\.", "_", var.list), collapse = "\n"), ";\n",
+            " ngroups = ", ngroups, ";\n", 
+            " NOBSERVATIONS =", ngroups, "(", x, ");\n", 
+            " NREPS =", sim.reps, ";\n\n",
+            ifelse(any(is.null(categorical)),
+                   "\n",  
+                   paste(
+                     " CATEGORICAL =", paste(categorical, collapse = "\n"), ";\n", 
+                     " GENERATE = ", paste(gen.cat, collapse = "\n"),
+                     ";\n\n"  )),
+            
+            
+            
+            "ANALYSIS:\n",
+            ifelse(estimator == "WLSMV", "",
+                   "  TYPE = MIXTURE;\n"),
+            "  alignment = ", "FIXED(", refGroup, ");\n",
+            "  estimator = ", estimator, ";\n",
+            "  processors =", processors, ";\n",
+            
+            ifelse(any(!is.null(categorical)) & estimator == "MLR",
+                   " algorithm = integration;\n\n",
+                   "\n"  
+                   ),
+            ifelse(any(!is.null(parameterization)),
+                   paste(" parameterization =", parameterization, ";\n\n"),
+                   "\n"  
+            ),
+            
+            "MODEL POPULATION:\n",
+            ifelse(estimator == "WLSMV", "",
+                   " %OVERALL%\n"),
+            ifelse(estimator == "WLSMV", 
+                   {
+                     gsub("MODEL ", "MODEL POPULATION-g", stValues) %>%
+                       gsub("%|#", "", .) %>%
+                       paste(., collapse="\n") 
+                   },
+                   paste(stValues, collapse="\n")
+            ),
+            
+            "\nMODEL:\n",
+            ifelse(estimator == "WLSMV", "",
+                   " %OVERALL%\n"),
+            ifelse(estimator == "WLSMV", 
+                   {
+                     gsub("MODEL ", "MODEL g", stValues) %>%
+                       gsub("%|#", "", .) %>%
+                       paste(collapse="\n") 
+                   },
+                   paste(stValues, collapse="\n")
+            )
+  )
+  cat(mpls.code, sep="", file = paste0("sim", x , ".inp"))
+}
+
+if(run) {
+
+for (x in sim.samples) {
+  message("Run simulation", x, "in Mplus.\n")
+  trash <- system(paste(Mplus_com, paste0("sim", x, ".inp")))
+  
+}
+  } else {
+  message(paste("Mplus input files created:", 
+                paste(paste0("sim", sim.samples, ".inp"), collapse = ";" )))
+}
+
+
+if(summaries) { 
+  summ.out = extractAlignmentSim(sapply(sim.samples, function(x) paste0("sim", x, ".out")), silent = TRUE) 
+  cat("\n", "⎯⎯⎯⎯⎯⎯⎯⎯⎯ ", "Results of simulations", rep("⎯", getOption("width", 80)-20),  "\n", sep="") 
+  print(summ.out)
+  invisible(summ.out)
+  }
+
+}
+
+
+MplusVersion <- function(Mplus_com) {
+  Mpl.version <- system(paste(Mplus_com, "-version"), intern=T)
+  Mpl.version <- sub("^Mplus VERSION  *(.*?) *\\s.*", "\\1", Mpl.version)
+  return(Mpl.version)
 }

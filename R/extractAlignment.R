@@ -26,7 +26,7 @@ extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = 
  
 
   # Read file
-  b.string<-  paste(readLines(file), collapse="\n")
+  b.string <-  paste(readLines(file), collapse="\n")
   
   
   # Extract estimator
@@ -42,6 +42,15 @@ extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = 
   mplus.version <- strsplit(mplus.version, " ")[[1]]
   mplus.version.system <- mplus.version[[3]] 
   mplus.version <- mplus.version[[2]]
+  
+  # Var list
+  
+  var.list = scan(text=sub(".*names = *(.*?) *;.*", "\\1", b.string), what="character", quiet = T)[-1]
+  
+  # Parameterization
+  parameterization = ifelse(any(grepl("Parameterization", sum.of.analysis.s)),
+                            trimws(gsub("Parameterization" ,"",sum.of.analysis.s[grepl("Parameterization", sum.of.analysis.s)])),
+                            NULL)
 
   if(!mplus.version %in% c("8.8", "8.9", "8.10"))
     warning("Mplus versions 8.7 and earlier are not officially supported,
@@ -363,33 +372,46 @@ if(estimator=="MLR") {
       output$summary <- merge(output[["summary"]], 
                               fit.contrib, 
                               by = "row.names")
-      
-      output$summary <- output$summary #[order(output$summary$Factor),]
+      rownames(output$summary)<-output$summary$Row.names
+      output$summary <- output$summary[,-1]
     }
       }
   }
   
   
+  # Final message ####
+  sum.noninv = sum(output$summary[,"N_noninvariant"])
+  n.params.total = sum(output$summary[,c("N_invariant", "N_noninvariant")])
+  
+  final.message = paste("There are", sum.noninv, 
+        "non-invariant parameters out of",
+        n.params.total, 
+        "which is", 
+        scales::percent(sum.noninv/n.params.total),
+        ".\n This is", ifelse(sum.noninv/n.params.total < .25,
+                              "smaller than the recommended cutoff of 25%, thereby the results support approximate invariance. Running simuations is still recommended.",
+                              "greater than the recommended cutoff of 25%, thereby the results do NOT support approximate invariance. Running simulations is recommended for further exploration.")
+  )
+  
+  # Adding extra info
+  output$extra <- list(estimator = estimator,
+                      mplus.version = mplus.version,
+                      final.message = final.message,
+                      var.list = var.list,
+                      parameterization = parameterization,
+                      string = b.string)
+  
+  
   # Printing output
-  if(!silent) print(output$summary, row.names=T)
+  if(!silent) {
+    print(output$summary, row.names=T)
+    cat("\n",final.message)
+  }
+  
   if(nice.tables && !silent) {
     nice.tab1 <- knitr::kable(output$non.invariant.pars, format = "html")
    trash <-  capture.output(kableExtra::kable_styling(nice.tab1, bootstrap_options=c("striped", "bordered"), position = "left", font_size = 12))
   }
   
-  sum.noninv = sum(output$summary[,"N_noninvariant"])
-  n.params.total = sum(output$summary[,c("N_invariant", "N_noninvariant")])
-  
-  cat("\n",
-    paste("There are", sum.noninv, 
-              "non-invariant parameters out of",
-              n.params.total, 
-              "which is", 
-              scales::percent(sum.noninv/n.params.total),
-              ".\n This is", ifelse(sum.noninv/n.params.total < .25,
-                                   "smaller than the recommended cutoff of 25%, thereby the results support approximate invariance. Running simuations is still recommended.",
-                                   "greater than the recommended cutoff of 25%, thereby the results do NOT support approximate invariance. Running simulations is recommended for further exploration.")
-              )
-        )
   invisible(output)
 }

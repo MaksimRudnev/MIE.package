@@ -39,9 +39,13 @@ runAlignment(
 \item{summaries}{If the \code{\link[MIE]{extractAlignment}}     and \code{\link[MIE]{extractAlignmentSim}}    should be run after all the Mplus work is done. Default is FALSE.}
 
 \item{estimator}{Could be any estimator supported by Mplus. Default is "MLR".}
+
+\item{listwise}{`Listwise` option of  Mplus; whether the missing values should be deleted listwise.}
+
+\item{processors}{`Processors` option of Mplus.}
 }
 \description{
-Facilitates running frequentist alignmnet procedure in Mplus. It creates Mplus input and data from R data.frame, runs the input using Mplus, and provides its summaries back in R.
+Facilitates running alignmnet procedure in Mplus. It creates Mplus input and data from R data.frame, runs the input using Mplus, and returns its summaries back in R.
 }
 \details{
 The function runs in four steps to facilitate setting up and running alignment:
