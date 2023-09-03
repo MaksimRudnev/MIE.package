@@ -15,6 +15,7 @@ runAlignment(
   path = getwd(),
   summaries = FALSE,
   estimator = "MLR",
+  parameterization = NULL,
   listwise = "OFF",
   processors = 2
 )

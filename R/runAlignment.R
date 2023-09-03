@@ -370,7 +370,7 @@ if(!any(is.null(categorical))) {
 }
 
 
-#..writing code for simulations####
+#..writing code for simulations ####
 
 for(x in sim.samples) { 
   mpls.code <- c("MONTECARLO:", "\n",
