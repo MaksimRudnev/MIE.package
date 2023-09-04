@@ -231,7 +231,7 @@ if(estimator=="MLR") {
   names(al.pw.list)<- al.pw.names
   
   align.outp <- lapply(setNames(nm=al.pw.names), function(x) { 
-    print(x)
+    #print(x)
     #x=al.pw.names[[5]]
     x <- al.pw.list[[x]]
     
