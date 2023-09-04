@@ -36,12 +36,17 @@ extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = 
   estimator <- sub("^(Estimator)\\s*", "", estimator)
   
   # Version of Mplus
-  mplus.version <- substr(b.string, 
-         attr(regexpr("(Mplus VERSION)", b.string), "match.length")+1, 
-         regexpr("\n", b.string)-1)
-  mplus.version <- strsplit(mplus.version, " ")[[1]]
-  mplus.version.system <- mplus.version[[3]] 
-  mplus.version <- mplus.version[[2]]
+  # mplus.version <- substr(b.string, 
+  #        attr(regexpr("(Mplus VERSION)", b.string), "match.length")+1, 
+  #        regexpr("\n", b.string)-1)
+  # mplus.version <- gsub("\\d|\\.", "", mplus.version)
+  # mplus.version <- strsplit(mplus.version, " ")[[1]]
+  # mplus.version.system <- mplus.version[[3]] 
+  # mplus.version <- mplus.version[[2]]
+  # 
+  # 
+  mplus.version <- sub(".*Mplus VERSION *(.*?) *\n.*", "\\1", b.string)
+  mplus.version <- trimws(gsub("(\\(.*\\))", "", mplus.version))
   
   # Var list
   
@@ -50,7 +55,7 @@ extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = 
   # Parameterization
   parameterization = ifelse(any(grepl("Parameterization", sum.of.analysis.s)),
                             trimws(gsub("Parameterization" ,"",sum.of.analysis.s[grepl("Parameterization", sum.of.analysis.s)])),
-                            NULL)
+                            NA)
 
   if(!mplus.version %in% c("8.8", "8.9", "8.10"))
     warning("Mplus versions 8.7 and earlier are not officially supported,
@@ -143,14 +148,18 @@ mean.comp <- lapply(mean.comp, function(x) {
   }
   }
   
-  if("comparisons" %in% what) {
+  if(any(c("summary", "comparisons") %in% what)) {
   # Extract pairwise comparisons ### #####
   
   # extract alignment part
   align.outp <- extractBetween("ALIGNMENT OUTPUT", "Average Invariance index", b.string)
   #separate intercepts/thresholds and loadings
+  
+  # correction for version 8.10
+  align.outp <- gsub("Approximate Invariance Was Not Found For This Parameter.", 
+       "Approximate Measurement Invariance Holds For Groups:", align.outp)
 
-  if(mplus.version %in% c("8.8", "8.9") & estimator!="BAYES") { 
+  if(mplus.version %in% c("8.8", "8.9", "8.10") & estimator!="BAYES") { 
     
       align.outp1 <- strsplit(align.outp, "\n\n\n Loadings for ", fixed=T)[[1]]
      
@@ -160,11 +169,6 @@ mean.comp <- lapply(mean.comp, function(x) {
       al.i.th <- sub("\n\nINVARIANCE ANALYSIS\n\n Intercepts/Thresholds\n ", " ",  al.i.th)
       al.pw.i <- strsplit(al.i.th, "(Intercept for )|(Threshold )")[[1]]
     
-      
-      
-     # strsplit(al.pw.i, "\n")[[1]][1:15]
-      
-      
       al.loads <-align.outp1[-1]
       names(al.loads)<-names(mean.comp)
       al.loads <-lapply(seq_along(al.loads), 
@@ -226,8 +230,8 @@ if(estimator=="MLR") {
   
   names(al.pw.list)<- al.pw.names
   
-  align.outp <- lapply(setNames(al.pw.names, nm=al.pw.names), function(x) { 
-    #print(x)
+  align.outp <- lapply(setNames(nm=al.pw.names), function(x) { 
+    print(x)
     #x=al.pw.names[[5]]
     x <- al.pw.list[[x]]
     
@@ -252,8 +256,14 @@ if(estimator=="MLR") {
     AlignedPar = as.numeric(sub(".*Weighted Average Value Across Invariant Groups: *(.*?) *\n.*", "\\1", x[2]))
     R2 = as.numeric(sub(".*R-square/Explained variance/Invariance index: *(.*?) *\n.*", "\\1", x[2]))
     
+    if(grepl("Invariant Group Values", x[2])) {
+      
+    
     inv.comparison <- substr(x[2], regexpr("Invariant Group Values, Difference to Average and Significance", x[2]), nchar(x[2]))
     inv.comparison <- read.table(text = inv.comparison, skip=2)
+    } else { 
+      inv.comparison <- t(rep(NA,5))
+      }
     
     if(estimator=="BAYES") {
       colnames(inv.comparison) <- c("Group","Value", "Difference","SE","P.value", "lowerCI", "upperCI")

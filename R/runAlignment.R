@@ -398,7 +398,7 @@ for(x in sim.samples) {
                    " algorithm = integration;\n\n",
                    "\n"  
                    ),
-            ifelse(any(!is.null(parameterization)),
+            ifelse(any(!is.na(parameterization)),
                    paste(" parameterization =", parameterization, ";\n\n"),
                    "\n"  
             ),
