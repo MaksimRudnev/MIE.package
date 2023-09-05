@@ -3,6 +3,7 @@
 #' @param file filename of the Mplus alignment output file
 #' @param nice.tables Logical. If tables should be send to RStudio Viewer pane using `kable` and `kableExtra` packages.
 #' @param silent Logical. Used for debugging.
+#' @param what Character vector. What exactly to extract. Possible values: "summary", "ranking", "comparisons", "contributions".
 #' @examples
 #' \dontrun{  
 #'    align.summ <- extractAlignment("fixed.out") 
@@ -10,7 +11,10 @@
 #' @return A list of summary tables.
 #' @seealso \code{\link[MIE]{runAlignment}}  and \code{\link[MIE]{extractAlignmentSim}} 
 #' @export
-extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = FALSE, what = c("summary", "ranking", "comparisons") ) {
+extractAlignment <-  function(file = "fixed.out", 
+                              nice.tables = FALSE, 
+                              silent = FALSE, 
+                              what = c("summary", "ranking", "comparisons", "contributions") ) {
   
   if(!file.exists(file)) warning("File not found")
   
@@ -36,17 +40,8 @@ extractAlignment <-  function(file = "fixed.out", nice.tables = FALSE, silent = 
   estimator <- sub("^(Estimator)\\s*", "", estimator)
   
   # Version of Mplus
-  # mplus.version <- substr(b.string, 
-  #        attr(regexpr("(Mplus VERSION)", b.string), "match.length")+1, 
-  #        regexpr("\n", b.string)-1)
-  # mplus.version <- gsub("\\d|\\.", "", mplus.version)
-  # mplus.version <- strsplit(mplus.version, " ")[[1]]
-  # mplus.version.system <- mplus.version[[3]] 
-  # mplus.version <- mplus.version[[2]]
-  # 
-  # 
-  mplus.version <- sub(".*Mplus VERSION *(.*?) *\n.*", "\\1", b.string)
-  mplus.version <- trimws(gsub("(\\(.*\\))", "", mplus.version))
+ mplus.version <-  MIE:::MplusVersion(out.string = b.string) 
+
   
   # Var list
   
@@ -322,7 +317,7 @@ if(estimator=="MLR") {
   
   
   # Fit contribution ######
-  if(estimator %in% c("MLR", "ML")) {
+  if(estimator %in% c("MLR", "ML") & "contributions" %in% what) {
     
     if(grepl("TECHNICAL 8 OUTPUT", b.string))  {
       
@@ -356,8 +351,10 @@ if(estimator=="MLR") {
       
       # because Mplus prints duplicates for factor loadings when thresholds are present, we need to drop duplicates
       if(nrow(contrib.l.tab)>length(nmz.loadings)) {
-        contrib.l.tab <- contrib.l.tab[!duplicated(contrib.l.tab),]
+        # delete duplicated contributions of factor loadings
+        contrib.l.tab <- contrib.l.tab[!duplicated(gsub("\\$.*", "", nmz.th.int)),]
         contrib <- unname(c(unlist(contrib.i.tab), unlist(contrib.l.tab)))
+        
       }
       
       names(contrib) <- c(nmz.th.int, nmz.loadings)
@@ -385,7 +382,10 @@ if(estimator=="MLR") {
       rownames(output$summary)<-output$summary$Row.names
       output$summary <- output$summary[,-1]
     }
-      }
+    } else {
+      warning("Extracting the fit contributions failed.
+                Please check whether Tech8 was included in the input file.")
+    } 
   }
   
   
@@ -399,8 +399,12 @@ if(estimator=="MLR") {
         "which is", 
         scales::percent(sum.noninv/n.params.total),
         ".\n This is", ifelse(sum.noninv/n.params.total < .25,
-                              "smaller than the recommended cutoff of 25%, thereby the results support approximate invariance. Running simuations is still recommended.",
-                              "greater than the recommended cutoff of 25%, thereby the results do NOT support approximate invariance. Running simulations is recommended for further exploration.")
+                              "smaller than the recommended cutoff of 25%, 
+                              thereby the results support approximate invariance. 
+                              Running simuations is still recommended.\n",
+                              "greater than the recommended cutoff of 25%, 
+                              thereby the results do NOT support approximate invariance. 
+                              Running simulations is recommended for further exploration.\n")
   )
   
   # Adding extra info

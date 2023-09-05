@@ -8,7 +8,7 @@ extractAlignment(
   file = "fixed.out",
   nice.tables = FALSE,
   silent = FALSE,
-  what = c("summary", "ranking", "comparisons")
+  what = c("summary", "ranking", "comparisons", "contributions")
 )
 }
 \arguments{
@@ -17,6 +17,8 @@ extractAlignment(
 \item{nice.tables}{Logical. If tables should be send to RStudio Viewer pane using `kable` and `kableExtra` packages.}
 
 \item{silent}{Logical. Used for debugging.}
+
+\item{what}{Character vector. What exactly to extract. Possible values: "summary", "ranking", "comparisons", "contributions".}
 }
 \value{
 A list of summary tables.

@@ -185,13 +185,16 @@ runAlignment <- function(
   trash <- system(paste(Mplus_com, "free.inp"))
 
   
-  version <- MIE:::MplusVersion(Mplus_com)
-  
+  #Mplus.version <- MIE:::MplusVersion(Mplus_com)
   
   
   # Reading free, making a fixed alignment syntax ####
   
   outFree <- paste(readLines("free.out"), collapse = "\n") 
+  
+
+  Mplus.version <- MIE:::MplusVersion(out.string = outFree) 
+  
   if(grepl("TO AVOID MISSPECIFICATION USE THE GROUP WITH VALUE", outFree)) {
     
     
@@ -200,8 +203,7 @@ runAlignment <- function(
   } else {
     
     
-    if(!version %in% c("8.8") & 
-       estimator!="BAYES") {
+    if(!Mplus.version %in% c("8.8") & estimator!="BAYES") {
       
       free.tab.means <- sub(".*SIGNIFICANCE LEVEL IN DESCENDING ORDER *(.*?) *MODEL COMMAND WITH FINAL ESTIMATES USED AS STARTING VALUES.*", "\\1", outFree)
       refGroup <- as.character(read.table(text=sub(".*\n *(.*?) *\n\n\n\n\n.*", "\\1", free.tab.means))[3])
@@ -459,8 +461,16 @@ invisible(summ.out)
 }
 
 
-MplusVersion <- function(Mplus_com) {
-  Mpl.version <- system(paste(Mplus_com, "-version"), intern=T)
-  Mpl.version <- sub("^Mplus VERSION  *(.*?) *\\s.*", "\\1", Mpl.version)
+MplusVersion <- function(Mplus.com=NULL, out.string=NULL) {
+  if(!is.null(Mplus.com)) { 
+    Mpl.version <- system(paste(Mplus.com, "-version"), intern=T)
+    Mpl.version <- sub("^Mplus VERSION  *(.*?) *\\s.*", "\\1", Mpl.version)
+
+  } else if(!is.null(out.string)) {
+    Mpl.version <- sub(".*Mplus VERSION *(.*?) *\n.*", "\\1", out.string)
+    Mpl.version <- trimws(gsub("(\\(.*\\))", "", Mpl.version))
+  }
   return(Mpl.version)
 }
+
+
