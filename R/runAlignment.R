@@ -292,6 +292,9 @@ runAlignmentSim <- function(file,
                             processors = 2) {
   
   
+  oldwd <- getwd()
+  setwd(path)
+  
 if(!run)  summaries <- FALSE
 
 extr.model <-  extractAlignment(file, silent = T)
@@ -432,11 +435,12 @@ for(x in sim.samples) {
 
 if(run) {
 
-for (x in sim.samples) {
-  message("Run simulation", x, "in Mplus.\n")
-  trash <- system(paste(Mplus_com, paste0("sim", x, ".inp")))
+    for (x in sim.samples) {
+      message("Run simulation", x, "in Mplus.\n")
+      trash <- system(paste(Mplus_com, paste0("sim", x, ".inp")))
+      
+    }
   
-}
   } else {
   message(paste("Mplus input files created:", 
                 paste(paste0("sim", sim.samples, ".inp"), collapse = ";" )))
@@ -447,9 +451,10 @@ if(summaries) {
   summ.out = extractAlignmentSim(sapply(sim.samples, function(x) paste0("sim", x, ".out")), silent = TRUE) 
   cat("\n", "⎯⎯⎯⎯⎯⎯⎯⎯⎯ ", "Results of simulations", rep("⎯", getOption("width", 80)-20),  "\n", sep="") 
   print(summ.out)
-  invisible(summ.out)
-  }
-
+  
+}
+setwd(oldwd)
+invisible(summ.out)
 }
 
 
