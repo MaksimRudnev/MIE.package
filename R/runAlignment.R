@@ -125,21 +125,21 @@ runAlignment <- function(
            "   file = 'mplus_temp.tab';", "\n",
            "   LISTWISE = ", listwise, ";\n",
            " VARIABLE:", "\n",
-           "   names =", gsub("\\.", "_", group), " ", paste(gsub("\\.", "_", var.list), collapse="\n"), ";\n",
+           "   names =\n    ", gsub("\\.", "_", group), " ", paste(gsub("\\.", "_", var.list), collapse="\n    "), ";\n",
            "   missing = .;", "\n",
            ifelse(any(is.null(categorical)),
                   "\n",
                   paste("   categorical = ", paste(categorical, collapse = "\n"), ";\n")
            ),
-           "!   GROUP RECODINGS: \n ! OLD = NEW \n", 
-           paste("! ",  apply(new.group.codes, 1, paste, collapse = " = "), "\n"),
+           "\n!      GROUP RECODINGS: \n !      OLD = NEW \n", 
+           paste("!      ",  apply(new.group.codes, 1, paste, collapse = " = "), "\n"),
            
            ifelse(estimator == "WLSMV", 
                   paste(
                     "   grouping = ", gsub("\\.", "_", group), "(", paste(list.of.groups, collapse = "\n")),
-                  paste(
+                  paste0(
                     "   classes = c(", ngroups, ");\n",
-                    "   knownclass = c(", paste0(gsub("\\.", "_", group), " = ", list.of.groups, " \n    ", collapse=""), collapse="\n")),
+                    "   knownclass = c(\n     ", paste0(gsub("\\.", "_", group), " = ", list.of.groups, " \n     ", collapse=""), collapse="\n")),
            
            ");\n\n",
            
@@ -150,7 +150,7 @@ runAlignment <- function(
            "  alignment =", kind = "", ";\n", 
            "  processors =", processors, ";\n",
            ifelse(any(!is.null(categorical)) & estimator == "MLR",
-                  " algorithm = integration;\n\n",
+                  "  algorithm = integration;\n\n",
                   "\n"  
            ),
            ifelse(any(!is.null(parameterization)),
@@ -164,7 +164,8 @@ runAlignment <- function(
            ifelse(estimator == "WLSMV", "", 
                   "  %OVERALL%\n"),
            model, 
-           ";\n\n",
+           ifelse(grepl(";$", trimws(model) ), "", ";"),
+           "\n\n",
            
            "OUTPUT: align tech8 SVALUES;", 
            "\n\n",
