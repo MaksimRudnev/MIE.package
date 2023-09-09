@@ -16,6 +16,8 @@ runAlignmentSim(
 )
 }
 \arguments{
+\item{file}{Path to the fixed alignment Mplus output file.}
+
 \item{sim.samples}{Vector of integers. Group sample sizes for simulation,  the length of this vector also determines  a number of simulation studies. Default is `c(100, 500, 1000)`. May take a substantial amount of time. Use NULL to avoid running simulations.}
 
 \item{sim.reps}{A number of simulated datasets in each simulation. Default is 500. Use 0 to avoid running simulations.}
@@ -25,8 +27,6 @@ runAlignmentSim(
 \item{path}{Where all the .inp, .out, and .dat files should be stored?}
 
 \item{summaries}{If the \code{\link[MIE]{extractAlignmentSim}} should be run after all the Mplus work is done. Default is FALSE.}
-
-\item{model}{Path to the fixed alignment Mplus output file.}
 }
 \description{
 Creates Mplus code for alignment simulations and optionally runs it and returns its summaries back to R.

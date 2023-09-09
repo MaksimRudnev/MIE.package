@@ -45,7 +45,20 @@ extractAlignment <-  function(file = "fixed.out",
   
   # Var list
   
-  var.list = scan(text=sub(".*names = *(.*?) *;.*", "\\1", b.string), what="character", quiet = T)[-1]
+  var.list = scan(text=sub(".*names = *(.*?) *;.*", "\\1", b.string, ignore.case = T), 
+                  what="character", quiet = T)[-1]
+  
+  if(grepl("categorical", b.string)) {
+    
+    categorical.var.list = sub(".*categorical\\s*(.*?) *;.*", "\\1", b.string, ignore.case = T)
+    categorical.var.list = toupper(scan(text=trimws(gsub("=", "", categorical.var.list)), 
+         what="character", quiet = T))
+  } else {
+    categorical.var.list = NULL
+  }
+  
+  
+ 
   
   # Parameterization
   parameterization = ifelse(any(grepl("Parameterization", sum.of.analysis.s)),
@@ -214,7 +227,8 @@ if(estimator=="MLR") {
   
   al.pw <- c(paste(al.pw.i.names2, al.pw.i), paste("Loadings", al.pw.l))
   al.pw.names <- sapply(1:length(al.pw), function(b) substr( al.pw[b], 1, regexpr("\n", al.pw[b])-1))
-  
+  var.list.model <- gsub("\\$.*$", "", gsub("^.* ", "", al.pw.names))
+  var.list.model <- var.list.model[!duplicated(var.list.model)]
   
   if(estimator == "BAYES") {
     al.pw <- gsub("Approximate Invariance \\(Noninvariance\\) Holds For Groups:", 
@@ -399,19 +413,16 @@ if(estimator=="MLR") {
         "which is", 
         scales::percent(sum.noninv/n.params.total),
         ".\n This is", ifelse(sum.noninv/n.params.total < .25,
-                              "smaller than the recommended cutoff of 25%, 
-                              thereby the results support approximate invariance. 
-                              Running simuations is still recommended.\n",
-                              "greater than the recommended cutoff of 25%, 
-                              thereby the results do NOT support approximate invariance. 
-                              Running simulations is recommended for further exploration.\n")
+                              "smaller than the recommended cutoff of 25%,\n thereby the results support approximate invariance. \nRunning simuations is still recommended.\n",
+                              "greater than the recommended cutoff of 25%,\nthereby the results do NOT support approximate invariance.\nRunning simulations is recommended for further exploration.\n")
   )
   
   # Adding extra info
   output$extra <- list(estimator = estimator,
                       mplus.version = mplus.version,
                       final.message = final.message,
-                      var.list = var.list,
+                      var.list = var.list, # var.list.model, # some names could be shrunk
+                      categorical.var.list  = categorical.var.list,
                       parameterization = parameterization,
                       string = b.string)
   

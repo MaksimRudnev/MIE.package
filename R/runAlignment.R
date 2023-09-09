@@ -278,7 +278,7 @@ runAlignment <- function(
 
 #' Creates Mplus code for alignment simulations and optionally runs it and returns its summaries back to R.
 #' 
-#' @param model Path to the fixed alignment Mplus output file.
+#' @param file Path to the fixed alignment Mplus output file.
 #' @param sim.samples Vector of integers. Group sample sizes for simulation,  the length of this vector also determines  a number of simulation studies. Default is `c(100, 500, 1000)`. May take a substantial amount of time. Use NULL to avoid running simulations.
 #' @param sim.reps A number of simulated datasets in each simulation. Default is 500. Use 0 to avoid running simulations.
 #' @param Mplus_com  Sometimes you don't have a direct access to Mplus, so this argument specifies what to send to a system command line. Default value is "mplus".
@@ -304,14 +304,9 @@ extr.model <-  extractAlignment(file, silent = T)
 
 
 
-if(any(grepl("Threshold", row.names(extr.model$summary )))) {
-  thresholds = row.names(extr.model$summary )[grepl("Threshold", row.names(extr.model$summary ))]
-  categorical <- unique(gsub("Threshold |\\$\\d", "", thresholds))
-} else {
-  categorical <- NULL
-}
 
 
+categorical = extr.model$extra$categorical.var.list
 estimator = extr.model$extra$estimator
 ngroups = extr.model$summary$N_invariant[[1]] + extr.model$summary$N_noninvariant[[1]]
 refGroup = extr.model$mean.comparison[[1]][
