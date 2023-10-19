@@ -23,7 +23,7 @@ extractAlignmentSim <- function(sim.outputs = c("sim500.out", "sim100.out", "sim
     if(!grepl("CORRELATIONS AND MEAN SQUARE ERROR OF POPULATION AND ESTIMATE VALUES", f)) {
       
       #stop("Correlations output is not found.")
-      warning("Correlations output is not found. Calculating correlations manually")
+      message("Correlations output is not found. Calculating correlations manually")
       
       # extract parameters and correlate averages
       partable <- MIE:::extractParameters(string = f)
@@ -41,10 +41,11 @@ extractAlignmentSim <- function(sim.outputs = c("sim500.out", "sim100.out", "sim
       
       results.file <- sub(".*RESULTS SAVING INFORMATION(.*?) *Save file format.*", "\\1", f)
       results.file <- trimws(sub(".*Save file\n(.*?) *\n\n*", "\\1", results.file))
+      results.file <- ifelse(dirname(x)==".", results.file, paste0(dirname(x), "/",  results.file))
      if(file.exists(results.file)) {
        results.string <- readLines(results.file)
       } else {
-        warning("Results file was not found.")
+        warning("Results file was not found. Make sure you added 'RESULTS = filename.dat;' in the 'MONTECARLO:' section of the input file.")
       }
       
       replication.id.index <- which(!grepl("\\s", results.string))
@@ -62,6 +63,14 @@ extractAlignmentSim <- function(sim.outputs = c("sim500.out", "sim100.out", "sim
      # find the location of ALPHA matrix in the technical output
     tech1.output <- substr(f, regexec("TECHNICAL OUTPUT", f)[[1]]+16, regexec("STARTING VALUES", f)[[1]])
     
+     if(grepl("THE ROTATED SOLUTION", f)) {
+       # tech1.output <- substr(f, 
+       #                        regexec("TECHNICAL 1 OUTPUT FOR THE ROTATED SOLUTION", f)[[1]]+16, 
+       #                        gregexec("STARTING VALUES", f)[[1]])
+       
+       tech1.output <- sub(".*TECHNICAL 1 OUTPUT FOR THE ROTATED SOLUTION(.*?) *STARTING VALUES.*", "\\1", f)
+     }
+    
     param.spec.output <- strsplit(tech1.output, "PARAMETER SPECIFICATION FOR")[[1]][-1]
     names(param.spec.output) <- unname(trimws(sapply(param.spec.output, function(x) strsplit(x, "\n\n\n")[[1]][[1]])))
     
@@ -74,10 +83,10 @@ extractAlignmentSim <- function(sim.outputs = c("sim500.out", "sim100.out", "sim
    alpha.index <- reshape2::melt(alpha.output, level = "group", id.vars = NULL) 
       
    means.for.each.replication = 
-     lapply(parameter.vectors, function(x) {
-       suppressMessages({
-        param.vector = scan(text = parameter.vectors[[1]], what = numeric())
-       })
+     lapply(parameter.vectors, function(y) {
+       #suppressMessages({
+        param.vector = scan(text = y, what = numeric(), quiet = T)
+       #})
         cbind(alpha.index, est = param.vector[as.numeric(alpha.index$value)])
      })
    
@@ -110,8 +119,8 @@ extractAlignmentSim <- function(sim.outputs = c("sim500.out", "sim100.out", "sim
       "Correlation and mean square error of the average estimates" = 
         list("Correlation of average means with true" = corr.of.averages, 
           "Correlation of average variances with true" = NA, 
-          "MSE of average means with true", 
-          "MSE of average variances with true",
+          "MSE of average means with true" = NA, 
+          "MSE of average variances with true" = NA,
           N = corr.of.averages.N
         )
          
@@ -162,12 +171,24 @@ extractAlignmentSim <- function(sim.outputs = c("sim500.out", "sim100.out", "sim
   if(!silent) {
     
     
-    for(i in colnames(otp[[1]][[1]])  ) {
-      cat("\n", "⎯⎯⎯⎯⎯⎯⎯⎯⎯ ", i," ", rep("⎯", getOption("width", 80)-nchar(i)-2),  "\n", sep="") 
-      print(sapply(otp, function(x) x[[1]][,i] ), digits = 2)
-      print(sapply(otp, function(x) x[[2]][,i] ), digits = 2)
+    for(i in names(otp)  ) {
+      cat("\n", "⎯ Output: ", i," ⎯ ")
+      
+
+        cat("\n", "⎯⎯⎯=  ", 
+            names(otp[[i]])[[1]],
+            " =⎯ \n")
+        print(t(as.data.frame(otp[[i]][[1]])), digits = 2)
+        
+        
+        cat("\n", "⎯⎯⎯=  ", 
+            names(otp[[i]])[[2]],
+            " =⎯ \n")
+        print(otp[[i]][[2]], digits = 2)
+        
+      }
     }
-    }
+
   
   invisible(otp)
   

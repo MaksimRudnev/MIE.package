@@ -294,7 +294,7 @@ runAlignmentSim <- function(file,
                             run = TRUE,
                             processors = 2) {
   
-  
+
   oldwd <- getwd()
   setwd(path)
   
@@ -313,15 +313,24 @@ refGroup = extr.model$mean.comparison[[1]][
   extr.model$mean.comparison[[1]]$Factor.mean==0, "Group.value"]
 var.list = extr.model$extra$var.list
 parameterization = extr.model$extra$parameterization
-
+type = extr.model$extra$type
 
 # ..extracting population values from fixed alignment output ####
 outFixed <- extr.model$extra$string # paste(readLines(model), collapse = "\n")
 
-stValues <- sub(".*MODEL COMMAND WITH FINAL ESTIMATES USED AS STARTING VALUES *(.*?) *\n\n\n\n.*", "\\1", outFixed)
+stValues <- 
+    ifelse(grepl("MODEL COMMAND WITH FINAL ESTIMATES USED AS STARTING VALUES", outFixed),
+           sub(".*MODEL COMMAND WITH FINAL ESTIMATES USED AS STARTING VALUES *(.*?) *\n\n\n\n.*", "\\1", outFixed),
+           ifelse(grepl("CFA MODEL COMMAND WITH FINAL ROTATED ESTIMATES USED AS STARTING VALUES", outFixed),
+                  sub(".*CFA MODEL COMMAND WITH FINAL ROTATED ESTIMATES USED AS STARTING VALUES *(.*?) *\n\n\n.*", "\\1", outFixed),
+                  stop("Couldn't find starting values. Make sure the alignment was run with 'OUTPUT: SVALUES;' enabled."))
+           )
 
-if(nchar(stValues)<100) 
-  stop("Couldn't find starting values. Make sure the alignment was run with 'OUTPUT: SVALUES;' enabled.")
+# stValues <- sub(".*MODEL COMMAND WITH FINAL ESTIMATES USED AS STARTING VALUES *(.*?) *\n\n\n\n.*", "\\1", outFixed)
+# stValues <- sub(".*CFA MODEL COMMAND WITH FINAL ROTATED ESTIMATES USED AS STARTING VALUES *(.*?) *\n\n\n\n.*", "\\1", outFixed)
+# 
+# if(nchar(stValues)<100) 
+#   stop("Couldn't find starting values. Make sure the alignment was run with 'OUTPUT: SVALUES;' enabled.")
 
 stValues <- gsub("%C#", "%g#", stValues)
 stValues <- gsub("c#", "g#", stValues)
@@ -342,19 +351,38 @@ if (grepl("%OVERALL%", stValues) ) {
   
 } else {
   
-  corrupt.code <- sub("(.*?) *MODEL 1.*", "\\1", stValues)
-  correction <- strsplit(corrupt.code, "\n")[[1]]
-  correction <- correction[grep(" BY ",  correction)]
-  correction <- gsub(";", "*1;", correction)
-  stValues <- paste(paste(correction, collapse = "\n"),
-                    "\n",
-                    substr(stValues, regexpr("MODEL 1", stValues), nchar(stValues)))
+  # corrupt.code <- sub("(.*?) *MODEL 1.*", "\\1", stValues)
+  # correction <- strsplit(corrupt.code, "\n")[[1]]
+  # correction <- correction[grep(" BY ",  correction)]
+
+  # stValues <- paste(paste(correction, collapse = "\n"),
+  #                   "\n",
+  #                   substr(stValues, regexpr("MODEL 1", stValues), nchar(stValues)))
+  #                   
+  
+  
+  correction <- strsplit(stValues, "\n")[[1]]
+  correction <- ifelse(grepl("\\*", correction), correction, gsub(";", "*1;", correction))
+  stValues = paste(correction, collapse = "\n")
+  
+  # replace group names with numbers
+  # fix it! stValues[gregexpr("MODEL",  stValues)[[1]]]
 }
 
 
 
 if(!any(is.null(categorical))) {
-  g1 <- sub(".*%g#1% *(.*?) *%g#2%.*", "\\1", stValues)
+  #
+  
+  is.mixture = grepl("%g#1%", stValues)[[1]]
+  if(is.mixture) {
+    g1 <- sub(".*%g#1% *(.*?) *%g#2%.*", "\\1", stValues)
+   
+  } else {
+    g1 <- sub(".*MODEL.*: *(.*?) *MODEL.*", "\\1", stValues)
+  }
+  
+  
   g1 <- strsplit(g1, "\n")[[1]]
   g1 <- g1[grep("\\[", g1)]
   g1 <- g1[grep("\\$", g1)]
@@ -374,52 +402,62 @@ if(!any(is.null(categorical))) {
 #..writing code for simulations ####
 
 for(x in sim.samples) { 
-  mpls.code <- c("MONTECARLO:", "\n",
-            " NAMES = ", paste(gsub("\\.", "_", var.list), collapse = "\n"), ";\n",
-            " ngroups = ", ngroups, ";\n", 
+  mpls.code <- c(
+    
+    "MONTECARLO:", "\n",
+            " NAMES =\n     ", paste(gsub("\\.", "_", var.list), collapse = "\n     "), ";\n",
+            " NGROUPS = ", ngroups, ";\n", 
             " NOBSERVATIONS =", ngroups, "(", x, ");\n", 
-            " NREPS =", sim.reps, ";\n\n",
+            " NREPS =", sim.reps, ";\n",
+            " RESULTS = sim", x, ".txt;\n",
             ifelse(any(is.null(categorical)),
                    "\n",  
                    paste(
-                     " CATEGORICAL =", paste(categorical, collapse = "\n"), ";\n", 
-                     " GENERATE = ", paste(gen.cat, collapse = "\n"),
+                     " CATEGORICAL =\n    ", paste(categorical, collapse = "\n     "), ";\n", 
+                     " GENERATE =\n    ", paste(gen.cat, collapse = "\n     "),
                      ";\n\n"  )),
             
             
             
-            "ANALYSIS:\n",
-            ifelse(estimator == "WLSMV", "",
-                   "  TYPE = MIXTURE;\n"),
+      "ANALYSIS:\n",
+            # ifelse(estimator == "WLSMV", "",
+            #        "  TYPE = MIXTURE;\n"),
+            ifelse(type == "MG", "", 
+                   paste0("   TYPE = ", type, ";\n")
+                   #"  TYPE = MIXTURE;\n"
+                   ),
+            
             "  alignment = ", "FIXED(", refGroup, ");\n",
             "  estimator = ", estimator, ";\n",
             "  processors =", processors, ";\n",
             
             ifelse(any(!is.null(categorical)) & estimator == "MLR",
-                   " algorithm = integration;\n\n",
-                   "\n"  
+                   "  algorithm = integration;\n\n",
+                   ""  
                    ),
             ifelse(any(!is.na(parameterization)),
-                   paste(" parameterization =", parameterization, ";\n\n"),
+                   paste("  parameterization =", parameterization, ";\n\n"),
                    "\n"  
             ),
             
-            "MODEL POPULATION:\n",
-            ifelse(estimator == "WLSMV", "",
+      "MODEL POPULATION:\n",
+            ifelse(estimator == "WLSMV"  & !is.mixture, 
+                   "",
                    " %OVERALL%\n"),
-            ifelse(estimator == "WLSMV", 
+            
+            ifelse(estimator == "WLSMV" & !is.mixture, 
                    {
                      gsub("MODEL ", "MODEL POPULATION-g", stValues) %>%
                        gsub("%|#", "", .) %>%
                        paste(., collapse="\n") 
                    },
                    paste(stValues, collapse="\n")
-            ),
+            ), "\n",
             
-            "\nMODEL:\n",
-            ifelse(estimator == "WLSMV", "",
+       "MODEL:\n",
+            ifelse(estimator == "WLSMV"  & !is.mixture, "",
                    " %OVERALL%\n"),
-            ifelse(estimator == "WLSMV", 
+            ifelse(estimator == "WLSMV"  & !is.mixture, 
                    {
                      gsub("MODEL ", "MODEL g", stValues) %>%
                        gsub("%|#", "", .) %>%
@@ -452,7 +490,8 @@ if(summaries) {
   
 }
 setwd(oldwd)
-invisible(summ.out)
+if(run) {
+invisible(summ.out) }
 }
 
 

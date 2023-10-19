@@ -30,8 +30,10 @@ extractAlignment <-  function(file = "fixed.out",
  
 
   # Read file
-  b.string <-  paste(readLines(file), collapse="\n")
-  
+  b.vector = readLines(file)
+  b.vector <- gsub("!.*", "", b.vector)
+  b.string <-  paste(b.vector, collapse="\n")
+ 
   
   # Extract estimator
   sum.of.analysis.s <-  extractBetween( "SUMMARY OF ANALYSIS",  "Input data format  ", b.string)
@@ -39,20 +41,88 @@ extractAlignment <-  function(file = "fixed.out",
   estimator <- sum.of.analysis.s[grep("Estimator", sum.of.analysis.s)]
   estimator <- sub("^(Estimator)\\s*", "", estimator)
   
+  # TYPE of analysis
+   type.analysis <- sub(".*ANALYSIS\\s*(.*?) *MODEL.*", "\\1", b.string, ignore.case = T)
+   
+   type.analysis.s <-  strsplit(type.analysis,"\n")[[1]]
+   type.analysis <- type.analysis.s[grep("type", type.analysis.s, ignore.case = T)]
+   type.analysis = ifelse(length(type.analysis)>0, 
+                          sub("^(type)\\s*", "", type.analysis),
+                          "MG")
+  
   # Version of Mplus
  mplus.version <-  MIE:::MplusVersion(out.string = b.string) 
 
   
   # Var list
+ names.begin.index = gregexpr("names", b.string, ignore.case = T)[[1]]
+ names.end.index = gregexpr(";", b.string, ignore.case = T)
+ names.end.index <- names.end.index[[1]][names.end.index[[1]] > names.begin.index][[1]]
+ string.varnames = substr(b.string, names.begin.index + attr(names.begin.index, "match.length"), names.end.index-1)
+ 
   
-  var.list = scan(text=sub(".*names = *(.*?) *;.*", "\\1", b.string, ignore.case = T), 
-                  what="character", quiet = T)[-1]
+
+  expand.varlist <- function(string.varnames) {
+    
+      var.list = scan(text=string.varnames, 
+                      what="character", quiet = T)[-1]
+      var.list <- var.list[!var.list %in% c("ARE", "=")]
+      if(any(var.list == "ALL")) {
+        
+        var.list <- "ALL"
+        
+      } else {
+      var.list <- unname(unlist(
+                  sapply(var.list, 
+                         function(x) 
+                           if(grepl("-", x)) { 
+        list.ends = strsplit(x, "-")[[1]]
+        list.margins = as.numeric(gsub("\\D", "", list.ends))
+        vars.at.the.end = gsub("\\d", "",list.ends)
+        if(vars.at.the.end[[1]]==vars.at.the.end[[2]]) {
+               paste0(vars.at.the.end[[1]], list.margins[[1]]:list.margins[[2]])
+        } else {
+              # message("Error expanding list of variables")
+          return(list.ends)
+        }
+        
+        } else {
+          x
+        })))}
+      return(var.list)
+      }
+  
+  var.list = expand.varlist(string.varnames)
+  
+  
+  # usevariables
+  names.begin.index = gregexpr("USEVARIABLES", b.string, ignore.case = T)[[1]]
+  names.end.index = gregexpr(";", b.string, ignore.case = T)
+  names.end.index <- names.end.index[[1]][names.end.index[[1]] > names.begin.index][[1]]
+
+  string.used.vars = substr(b.string, names.begin.index + attr(names.begin.index, "match.length"), names.end.index-1)
+  
+  used.vars.list = expand.varlist(string.used.vars)
+  
+if(is.matrix(used.vars.list)) {
+  used.vars.list = var.list[which(used.vars.list[1,1] == var.list):which(used.vars.list[2,1] == var.list)]
+} else if(used.vars.list[[1]] == "ALL") {
+  used.vars.list = var.list
+} 
+  
   
   if(grepl("categorical", b.string)) {
     
-    categorical.var.list = sub(".*categorical\\s*(.*?) *;.*", "\\1", b.string, ignore.case = T)
-    categorical.var.list = toupper(scan(text=trimws(gsub("=", "", categorical.var.list)), 
-         what="character", quiet = T))
+    categorical.var.string = sub(".*categorical\\s*(.*?) *;.*", "\\1", b.string, ignore.case = T)
+    
+    categorical.var.list = expand.varlist(categorical.var.string)
+    
+    if(is.matrix(categorical.var.list)) {
+      categorical.var.list = var.list[which(categorical.var.list[1,1] == var.list):which(categorical.var.list[2,1] == var.list)]
+    } else if(categorical.var.list[[1]] == "ALL") {
+      categorical.var.list = used.vars.list
+    } 
+    
   } else {
     categorical.var.list = NULL
   }
@@ -421,9 +491,10 @@ if(estimator=="MLR") {
   output$extra <- list(estimator = estimator,
                       mplus.version = mplus.version,
                       final.message = final.message,
-                      var.list = var.list, # var.list.model, # some names could be shrunk
+                      var.list = used.vars.list, # var.list.model, # some names could be shrunk
                       categorical.var.list  = categorical.var.list,
                       parameterization = parameterization,
+                      type = type.analysis,
                       string = b.string)
   
   
