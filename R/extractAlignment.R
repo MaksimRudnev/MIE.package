@@ -3,7 +3,7 @@
 #' @param file filename of the Mplus alignment output file
 #' @param nice.tables Logical. If tables should be send to RStudio Viewer pane using `kable` and `kableExtra` packages.
 #' @param silent Logical. Used for debugging.
-#' @param what Character vector. What exactly to extract. Possible values: "summary", "ranking", "comparisons", "contributions".
+#' @param what Character vector. What exactly to extract. Possible values: "summary", "ranking", "comparisons", "contributions", "savedata".
 #' @examples
 #' \dontrun{  
 #'    align.summ <- extractAlignment("fixed.out") 
@@ -14,7 +14,7 @@
 extractAlignment <-  function(file = "fixed.out", 
                               nice.tables = FALSE, 
                               silent = FALSE, 
-                              what = c("summary", "ranking", "comparisons", "contributions") ) {
+                              what = c("summary", "ranking", "comparisons", "contributions", "savedata") ) {
   
   if(!file.exists(file)) warning("File not found")
   
@@ -221,13 +221,13 @@ mean.comp <- lapply(mean.comp, function(x) {
     
     output[["ranking.table"]] <-ranking.tab
     } else {
-      message("Could not find ranking file.")
+      warning("Could not find ranking file.")
     }
   }
   }
   
   if(any(c("summary", "comparisons") %in% what)) {
-  # Extract pairwise comparisons ### #####
+  # Extract pairwise comparisons #####
   
   # extract alignment part
   align.outp <- extractBetween("ALIGNMENT OUTPUT", "Average Invariance index", b.string)
@@ -467,11 +467,42 @@ if(estimator=="MLR") {
       output$summary <- output$summary[,-1]
     }
     } else {
-      warning("Extracting the fit contributions failed.
-                Please check whether Tech8 was included in the input file.")
+      warning("Extracting fit contributions failed. Please check if Tech8 is included in the input file.")
     } 
   }
   
+  # Savedata ####
+  if( "savedata" %in% what) {
+    
+    if(!grepl("SAVEDATA INFORMATION", b.string)) {
+      
+      warning("Couldn't find the Savedata information.")
+      
+    } else {
+  str.out <- strsplit(b.string, "\n")[[1]]
+  save.dat.str <- str.out[ 
+    grep("SAVEDATA INFORMATION", str.out):
+      grep("Save missing symbol", str.out)]
+  
+  filename <- trimws(save.dat.str[grep("Save file$", save.dat.str)+1])
+  fileformat <- save.dat.str[ 
+    grep("Order and format of variables", save.dat.str):
+      grep("Save file format", save.dat.str)]
+  
+  fileformat <- fileformat[3:(length(fileformat)-2)]
+  fileformat <- read.table(text = paste(fileformat, sep = "\n"), col.names = c("varname", "type"))
+  saveddata <- read.fwf(filename, 
+                        widths = as.numeric(gsub("F|I|\\.\\d", "", fileformat$type)), 
+                        col.names = fileformat$varname, 
+                        strip.white = T, 
+                        na.strings = trimws(gsub("Save missing symbol", "", 
+                                                 save.dat.str[grepl("Save missing symbol", 
+                                                                    save.dat.str)])),
+                        colClasses = "numeric")
+  
+  
+  output$savedata <- saveddata
+  }}
   
   # Final message ####
   sum.noninv = sum(output$summary[,"N_noninvariant"])
