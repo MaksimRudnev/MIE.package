@@ -42,13 +42,18 @@ extractAlignment <-  function(file = "fixed.out",
   estimator <- sub("^(Estimator)\\s*", "", estimator)
   
   # TYPE of analysis
-   type.analysis <- sub(".*ANALYSIS\\s*(.*?) *MODEL.*", "\\1", b.string, ignore.case = T)
+   analysis.section <- sub(".*ANALYSIS\\s*(.*?) *MODEL.*", "\\1", b.string, ignore.case = T)
    
-   type.analysis.s <-  strsplit(type.analysis,"\n")[[1]]
+   type.analysis.s <-  strsplit(analysis.section,"\n")[[1]]
    type.analysis <- type.analysis.s[grep("type", type.analysis.s, ignore.case = T)]
    type.analysis = ifelse(length(type.analysis)>0, 
-                          sub("^(type)\\s*", "", type.analysis),
+                          gsub(";|(type)|=|\\s*", "", type.analysis, ignore.case = T),
                           "MG")
+   
+   
+   variable.section = sub(".*VARIABLE:\\s*(.*?) *:.*", "\\1", b.string, ignore.case = T)
+   
+   has.categorical.vars = grepl("categorical", variable.section)
   
   # Version of Mplus
  mplus.version <-  MIE:::MplusVersion(out.string = b.string) 
@@ -67,6 +72,7 @@ extractAlignment <-  function(file = "fixed.out",
       var.list = scan(text=string.varnames, 
                       what="character", quiet = T)[-1]
       var.list <- var.list[!var.list %in% c("ARE", "=")]
+      
       if(any(var.list == "ALL")) {
         
         var.list <- "ALL"
@@ -111,9 +117,10 @@ if(is.matrix(used.vars.list)) {
 } 
   
   
-  if(grepl("categorical", b.string)) {
+  if(has.categorical.vars) {
     
-    categorical.var.string = sub(".*categorical\\s*(.*?) *;.*", "\\1", b.string, ignore.case = T)
+    categorical.var.string = sub(".*categorical\\s*(.*?) *;.*", "\\1", 
+                                 variable.section, ignore.case = T)
     
     categorical.var.list = expand.varlist(categorical.var.string)
     

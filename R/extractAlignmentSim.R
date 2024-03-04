@@ -12,18 +12,24 @@
 #' @return Invisibly returns a summary table.
 #' @seealso \code{\link[MIE]{runAlignment}}  and \code{\link[MIE]{extractAlignment}} 
 #' @export
-extractAlignmentSim <- function(sim.outputs = c("sim500.out", "sim100.out", "sim1000.out"), silent = FALSE) {
+extractAlignmentSim <- function(sim.outputs = c("sim500.out", "sim100.out", "sim1000.out"), silent = FALSE, manual = F) {
   
   
-  otp<- lapply(sim.outputs, function(x) {
+  otp <- lapply(sim.outputs, function(x) {
     f <- paste(readLines(x), collapse="\n")
     mplus.version <- sub(".*Mplus VERSION *(.*?) *\n.*", "\\1", f)
     mplus.version <- trimws(gsub("(\\(.*\\))", "", mplus.version))
     
-    if(!grepl("CORRELATIONS AND MEAN SQUARE ERROR OF POPULATION AND ESTIMATE VALUES", f)) {
+    
+    
+    if(!grepl("CORRELATIONS AND MEAN SQUARE ERROR OF POPULATION AND ESTIMATE VALUES", f) & !manual) {
       
       #stop("Correlations output is not found.")
       message("Correlations output is not found. Calculating correlations manually")
+      manual <- TRUE
+    }
+    
+    if(manual) {
       
       # extract parameters and correlate averages
       partable <- MIE:::extractParameters(string = f)
@@ -38,77 +44,43 @@ extractAlignmentSim <- function(sim.outputs = c("sim500.out", "sim100.out", "sim
       
       
       # extract each replication mean, correlate to population value, and then average
-      
-      results.file <- sub(".*RESULTS SAVING INFORMATION(.*?) *Save file format.*", "\\1", f)
-      results.file <- trimws(sub(".*Save file\n(.*?) *\n\n*", "\\1", results.file))
-      results.file <- ifelse(dirname(x)==".", results.file, paste0(dirname(x), "/",  results.file))
-     if(file.exists(results.file)) {
-       results.string <- readLines(results.file)
-      } else {
-        warning("Results file was not found. Make sure you added 'RESULTS = filename.dat;' in the 'MONTECARLO:' section of the input file.")
-      }
-      
-      replication.id.index <- which(!grepl("\\s", results.string))
-      parameter.vectors <- 
-        lapply(1:length(replication.id.index), function(i) {
-                 begin = replication.id.index[[i]] + 1
-                 end = ifelse(i == length(replication.id.index), 
-                              length(results.string), 
-                              replication.id.index[[i + 1]]-1)
-                 paste(results.string[begin:end], collapse = " ")
-               })
-        
-    names(parameter.vectors) = results.string[replication.id.index]
-  
-     # find the location of ALPHA matrix in the technical output
-    tech1.output <- substr(f, regexec("TECHNICAL OUTPUT", f)[[1]]+16, regexec("STARTING VALUES", f)[[1]])
+
+    params.for.each.replication <- MIE:::getSavedParams(x)
     
-     if(grepl("THE ROTATED SOLUTION", f)) {
-       # tech1.output <- substr(f, 
-       #                        regexec("TECHNICAL 1 OUTPUT FOR THE ROTATED SOLUTION", f)[[1]]+16, 
-       #                        gregexec("STARTING VALUES", f)[[1]])
-       
-       tech1.output <- sub(".*TECHNICAL 1 OUTPUT FOR THE ROTATED SOLUTION(.*?) *STARTING VALUES.*", "\\1", f)
-     }
+    means.for.each.replication <- lapply(params.for.each.replication, function(y) dplyr::filter(y, L2 == "alpha"))
     
-    param.spec.output <- strsplit(tech1.output, "PARAMETER SPECIFICATION FOR")[[1]][-1]
-    names(param.spec.output) <- unname(trimws(sapply(param.spec.output, function(x) strsplit(x, "\n\n\n")[[1]][[1]])))
-    
-   alpha.output <- lapply(param.spec.output, function(x) {
-     alpha.string = sub(".*ALPHA(.*?)\n\n.*", "\\1", x)
-     alpha.table = read.table(text = alpha.string, header = T)
-     alpha.table[-1,]
-   })
    
-   alpha.index <- reshape2::melt(alpha.output, level = "group", id.vars = NULL) 
-      
-   means.for.each.replication = 
-     lapply(parameter.vectors, function(y) {
-       #suppressMessages({
-        param.vector = scan(text = y, what = numeric(), quiet = T)
-       #})
-        cbind(alpha.index, est = param.vector[as.numeric(alpha.index$value)])
-     })
+   #reshape2::melt(means.for.each.replication, level = "L1")
    
-   pop.values = partable[partable$L2=="Means", c("L1", "parameter", "Population")]
-   pop.values$L1 <- gsub("Group ", "", pop.values$L1)
+   pop.values = partable[partable$L2=="Means" & !grepl("#",partable$parameter), 
+                         c("L1", "parameter", "Population")]
+   pop.values$L1 <- gsub("\\s", ".", toupper(gsub("Group ", "", pop.values$L1)))
    
    
    merged.dats = lapply(means.for.each.replication, function(x) {
-     merge(x, pop.values, by.x = c("Lgroup", "variable"), by.y = c("L1", "parameter"))
+     merge(x, pop.values, 
+           by.x = c("L1", "Var2"), 
+           by.y = c("L1", "parameter"))
    })
    
-   cors.df = sapply(merged.dats, function(x) 
-     sapply(setNames(nm=unique(x$variable)), function(latent.factor)
-       cor(x$est[x$variable == latent.factor], x$Population[x$variable == latent.factor])))
+   cors.df = sapply(merged.dats, 
+                    function(y) 
+                      sapply(setNames(nm=unique(y$Var2)), 
+                        function(latent.factor)
+                           cor(y$est[y$Var2 == latent.factor], 
+                               y$Population[y$Var2 == latent.factor])
+                        )
+                )
   
     
     # output
     list(
       "Correlations and mean square error of population and estimate values" =
-        list("Correlations Mean Average"=apply(cors.df, 1, mean),
+        list("Correlations Mean Average"={ if(is.data.frame(cors.df)) 
+          apply(cors.df, 1, mean) else mean(cors.df)},
                      "Correlations Variance Average"=NA, 
-                     "Correlations Mean SD" = apply(cors.df, 1, sd), 
+                     "Correlations Mean SD" = { if(is.data.frame(cors.df)) 
+                       apply(cors.df, 1, sd) else sd(cors.df)}, 
                      "Correlations Variance SD" = NA, 
                      "MSE Mean Average" = NA, 
                      "MSE Variance Average"= NA, 
@@ -258,9 +230,9 @@ for(i in 1:length(headers1.ind)) {
                               end.section,
                               headers2.in.section[k+1]-1)
     
-    subsection[[ all.pars.split [[headers2.in.section[[k]]]] ]] <-
+    subsection[[ all.pars.split [[ headers2.in.section[[k]] ]] ]] <-
       read.table(text = all.pars.split[begin.subsection:end.subsection],
-                 col.names = varnames.vector)
+                 col.names = varnames.vector, comment.char = "!")
   }
   
   all.pars.list[[all.pars.split[[headers1.ind[[i]]]]]] <- subsection
@@ -272,4 +244,83 @@ partable <-  reshape2::melt(all.pars.list, id.vars = "parameter") %>%
   reshape2::dcast(L1 + L2 + parameter ~ variable, value.var = "value")
 
 return(partable)
+}
+
+
+
+getSavedParams <- function(file) {
+  simpar <- MplusAutomation::readModels(file, what = c("tech1", "output"))
+  tech1 <- simpar$tech1$parameterSpecification
+  tech1.df <- reshape2::melt(tech1) %>% dplyr::filter(!is.na(value)) %>% dplyr::filter(value!=0)
+  
+  
+  results.file <- sub(".*RESULTS SAVING INFORMATION(.*?) *Save file format.*", "\\1", 
+                      paste(simpar$output, collapse = "\n"))
+  results.file <- trimws(sub(".*Save file\n(.*?) *\n\n*", "\\1", results.file))
+  results.file <- ifelse(dirname(file)==".", results.file, paste0(dirname(file), "/",  results.file))
+  if(file.exists(results.file)) {
+    results.string <- readLines(results.file)
+  } else {
+    warning("Results file was not found. Make sure you added 'RESULTS = filename.dat;' in the 'MONTECARLO:' section of the input file.")
+  }
+  
+  replication.id.index <- which(!grepl("\\s", results.string))
+  parameter.vectors <- 
+    lapply(1:length(replication.id.index), function(i) {
+      begin = replication.id.index[[i]] + 1
+      end = ifelse(i == length(replication.id.index), 
+                   length(results.string), 
+                   replication.id.index[[i + 1]]-1)
+      paste(results.string[begin:end], collapse = " ")
+    })
+  
+  names(parameter.vectors) = results.string[replication.id.index]
+  
+  #   # find the location of ALPHA matrix in the technical output
+  #  tech1.output <- substr(f, regexec("TECHNICAL OUTPUT", f)[[1]]+16, regexec("STARTING VALUES", f)[[1]])
+  #  
+  #   if(grepl("THE ROTATED SOLUTION", f)) {
+  #     # tech1.output <- substr(f, 
+  #     #                        regexec("TECHNICAL 1 OUTPUT FOR THE ROTATED SOLUTION", f)[[1]]+16, 
+  #     #                        gregexec("STARTING VALUES", f)[[1]])
+  #     
+  #     tech1.output <- sub(".*TECHNICAL 1 OUTPUT FOR THE ROTATED SOLUTION(.*?) *STARTING VALUES.*", "\\1", f)
+  #   }
+  #  
+  #  param.spec.output <- strsplit(tech1.output, "PARAMETER SPECIFICATION FOR")[[1]][-1]
+  #  names(param.spec.output) <- unname(trimws(sapply(param.spec.output, function(x) strsplit(x, "\n\n\n")[[1]][[1]])))
+  #  
+  # alpha.output <- lapply(1:length(param.spec.output), function(y) {
+  #   y = param.spec.output[[y]]
+  #   alpha.string = sub(".*ALPHA(.*?)\n\n.*", "\\1", y)
+  #   alpha.table = read.table(text = alpha.string, header = T, comment.char = "#")
+  #   alpha.table[-1,]
+  # })
+  
+  #  alpha.index <- reshape2::melt(alpha.output, level = "group", id.vars = NULL) 
+  
+  # means.for.each.replication = 
+  #   lapply(parameter.vectors, function(y) {
+  #     #suppressMessages({
+  #      param.vector = scan(text = y, what = numeric(), quiet = T)
+  #     #})
+  #      cbind(alpha.index, est = param.vector[as.numeric(alpha.index$value)])
+  #   })
+  
+  
+  
+  
+  params.for.each.replication =
+    lapply(parameter.vectors, function(y) {
+      #suppressMessages({
+      param.vector = scan(text = y, what = numeric(), quiet = T)
+      #})
+      # cbind(alpha.index, est = param.vector[as.numeric(alpha.index$value)])
+      
+      cbind(tech1.df, 
+            est = param.vector[as.numeric(tech1.df$value)],
+            se =  param.vector[as.numeric(tech1.df$value)+max(as.numeric(tech1.df$value))])
+      
+    })
+  return(params.for.each.replication)
 }

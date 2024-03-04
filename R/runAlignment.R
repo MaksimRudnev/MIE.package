@@ -369,12 +369,10 @@ if (grepl("%OVERALL%", stValues) ) {
   # fix it! stValues[gregexpr("MODEL",  stValues)[[1]]]
 }
 
-
+is.mixture = grepl("%g#1%", stValues)[[1]]
 
 if(!any(is.null(categorical))) {
-  #
   
-  is.mixture = grepl("%g#1%", stValues)[[1]]
   if(is.mixture) {
     g1 <- sub(".*%g#1% *(.*?) *%g#2%.*", "\\1", stValues)
    

@@ -7,7 +7,8 @@
 #' @param ... Formula, group, and all the other eligible arguments of \code{\link[lavaan]{cfa}} function.
 #'
 #' @export
-globalMI <- function(..., chi.sq=FALSE, omit = "", what = c("cfi", "tli", "rmsea", "srmr", "chisq")) {
+globalMI <- function(..., chi.sq=FALSE, omit = "", what = c("cfi", "tli", "rmsea", "srmr", "chisq"),
+                     partial = NULL) {
   
   fake.mdl <- lavaan::cfa(..., do.fit=F)
   
@@ -22,27 +23,48 @@ globalMI <- function(..., chi.sq=FALSE, omit = "", what = c("cfi", "tli", "rmsea
     
   }
   
+  if(length(partial)>0) 
+    models.to.run <- c(models.to.run, paste0("partial.", models.to.run[models.to.run!="configural"] ))
+  
   mdls <- lapply(setNames(models.to.run, nm=models.to.run), function(m) {
     
     constraints <- switch(m, 
                           configural = "",
+                          
                           metric = "loadings",
+                          partial.metric = "loadings",
+                          
                           thresholds = "thresholds", 
-                          scalar = c("loadings", "intercepts", "thresholds"))
- 
+                          partial.thresholds = "thresholds", 
+                          
+                          scalar = c("loadings", "intercepts", "thresholds"),
+                          partial.scalar = c("loadings", "intercepts", "thresholds"))
+    
+    if("group.partial" %in% ...names() )
+      group.partial = list(...)[["group.partial"]]
+    else 
+      group.partial = list()
+    
+    if(grepl("partial", m)) 
+      group.partial = c(partial, group.partial)
+      
+    
     print(paste("Running", m, "model"))
-    m.fit <- lavaan::cfa(..., group.equal = constraints)
+    m.fit <- lavaan::cfa(..., group.equal = constraints, group.partial = group.partial)
     
     if(!m.fit@optim$converged) {
       print("Refitting with L-BFGS-B") 
       m.fit <- lavaan::cfa(..., 
                            group.equal = constraints, 
+                           group.partial = group.partial,
                            optim.method = "L-BFGS-B")
     }
     
     return(m.fit)
     
   })
+  
+  class(mdls) <- append(class(mdls) , "groupwiseCFA")
     
   
 

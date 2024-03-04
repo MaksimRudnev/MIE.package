@@ -96,24 +96,67 @@ groupwiseCFA <- function(model,  data, group, ..., out = NULL,
 #' @param model.list A list of models in lavaan syntax. Can be an object of class groupwise.CFA
 #'
 #' @export
-summary.groupwiseCFA <- function(model.list) { # list of fitted CFAs
-  data.frame(
-    converged=ifelse(sapply(model.list, lavInspect, "converged"), "", "NO"),
-    corr.greater.1=sapply(model.list, function(x) 
-      ifelse(any(abs(lavInspect(x,"cor.lv"))>1), "YES", "")),
-    negat.lv.variance = sapply(model.list, function(x)
-      ifelse(any(diag(lavInspect(x, "cov.lv"))<0), "YES", "")),
-    negat.ov.variance = sapply(model.list, function(x)
-      ifelse(parameterestimates(x) %>%
-               dplyr::filter(lhs == rhs & op == "~~") %>%
-               dplyr::select(est) %>% `<`(., 0) %>% any, "YES", "")),
-    CFI = sapply(model.list, function(x) 
-      ifelse(lavInspect(x, "converged"),fitmeasures(x)[["cfi"]], NA)),
-    RMSEA = sapply(model.list, function(x) 
-      ifelse(lavInspect(x, "converged"),fitmeasures(x)[["rmsea"]], NA)),
-    SRMR = sapply(model.list, function(x) 
-      ifelse(lavInspect(x, "converged"),fitmeasures(x)[["srmr"]], NA))
-  ) }
+summary.groupwiseCFA <- function(model.list, what = c("cfi", "rmsea", "srmr"), diagnose = T, corrs = F) { # list of fitted CFAs
+ 
+  
+  fit.idx = sapply(model.list, function(x) {
+    if(lavInspect(x, "converged"))
+      fitMeasures(x)[what]
+    else 
+      sapply(what, function(yy) NA)
+  })
+  
+  
+  if(diagnose) {
+    diagnostics = data.frame(
+      converged=ifelse(sapply(model.list, lavInspect, "converged"), "", "NO"),
+      corr.greater.1=sapply(model.list, function(x) 
+        ifelse(any(abs(unlist(lavInspect(x,"cor.lv")))>1), "YES", "")),
+      negat.lv.variance = sapply(model.list, function(x)
+        ifelse(any(diag(lavInspect(x, "cov.lv"))<0), "YES", "")),
+      negat.ov.variance = sapply(model.list, function(x)
+        ifelse(any(diag(lavInspect(x, "cov.ov"))<0), "YES", ""))
+    ) 
+    
+    out  = cbind(diagnostics, t(fit.idx))
+    
+    
+    
+  } else {
+      out = t(fit.idx)
+  }
+  
+  if(corrs) {
+    
+    corrs <- lapply(hindi.small.models, function(x) {
+      corrs.mx = lavInspect(x, "cor.lv") 
+      corrs.mx[upper.tri(corrs.mx, diag = T)] <- NA
+      if(all(is.na(corrs.mx))) {
+        data.frame(factors = as.character(NA),
+                   cor.factors = NA)
+      } else {
+        corrs.mx = melt(corrs.mx) %>% filter(!is.na(value)) %>%
+          filter(value == max(value))
+        data.frame(factors = paste(corrs.mx[[1]], corrs.mx[[2]]),
+                   cor.factors = corrs.mx[[3]])
+      }
+    })
+    
+    max.corrs = melt(corrs, id.vars = c("factors")) %>% select(1,3) %>% set_colnames(c("Max_Cor_Factors", "Max_Corr"))
+    
+
+    
+    out = cbind(out, max.corrs)
+    
+  }
+  
+  
+  return(out)
+     
+
+  
+  
+  }
 
 
 
