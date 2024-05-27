@@ -14,7 +14,7 @@
 extractAlignment <-  function(file = "fixed.out", 
                               nice.tables = FALSE, 
                               silent = FALSE, 
-                              what = c("summary", "ranking", "comparisons", "contributions", "savedata") ) {
+                              what = c("summary", "ranking", "comparisons", "contributions") ) {
   
   if(!file.exists(file)) warning("File not found")
   
@@ -53,12 +53,16 @@ extractAlignment <-  function(file = "fixed.out",
    
    variable.section = sub(".*VARIABLE:\\s*(.*?) *:.*", "\\1", b.string, ignore.case = T)
    
-   has.categorical.vars = grepl("categorical", variable.section)
+   has.categorical.vars = grepl("categorical", variable.section, ignore.case = T)
   
   # Version of Mplus
  mplus.version <-  MIE:::MplusVersion(out.string = b.string) 
 
-  
+ if(!mplus.version %in% c("8.8", "8.9", "8.10", "8.11"))
+   warning("Mplus versions 8.7 and earlier are not officially supported,
+    but trying to extract summary anyways.") 
+ 
+ 
   # Var list
  names.begin.index = gregexpr("names", b.string, ignore.case = T)[[1]]
  names.end.index = gregexpr(";", b.string, ignore.case = T)
@@ -111,9 +115,12 @@ extractAlignment <-  function(file = "fixed.out",
   used.vars.list = expand.varlist(string.used.vars)
   
 if(is.matrix(used.vars.list)) {
-  used.vars.list = var.list[which(used.vars.list[1,1] == var.list):which(used.vars.list[2,1] == var.list)]
+  # used.vars.list = var.list[which(used.vars.list[1,1] == var.list):which(used.vars.list[2,1] == var.list)]
+  used.vars.list <- as.vector(used.vars.list)
+  
 } else if(used.vars.list[[1]] == "ALL") {
   used.vars.list = var.list
+  
 } 
   
   
@@ -142,22 +149,20 @@ if(is.matrix(used.vars.list)) {
                             trimws(gsub("Parameterization" ,"",sum.of.analysis.s[grepl("Parameterization", sum.of.analysis.s)])),
                             NA)
 
-  if(!mplus.version %in% c("8.8", "8.9", "8.10"))
-    warning("Mplus versions 8.7 and earlier are not officially supported,
-    but trying to extract summary anyways.")
+
   
   # output list to be filled
   output <- list()
   
   # Extract mean comparison ######
-  if(!mplus.version %in% c("8.9", "8.10") & 
+  if(!mplus.version %in% c("8.9", "8.10", "8.11") & 
      estimator!="BAYES") {
     
     mean.comparison <- extractBetween(
       "FACTOR MEAN/INTERCEPT COMPARISON AT THE 5% SIGNIFICANCE LEVEL IN DESCENDING ORDER", 
       "\n\n\n\n\n", b.string)
     
-  } else if(mplus.version %in% c("8.9", "8.10") & estimator!="BAYES" ) {
+  } else if(mplus.version %in% c("8.9", "8.10", "8.11") & estimator!="BAYES" ) {
     
     mean.comparison <- extractBetween(
       "FACTOR INTERCEPT COMPARISON AT THE 5% SIGNIFICANCE LEVEL IN DESCENDING ORDER", 
@@ -244,7 +249,7 @@ mean.comp <- lapply(mean.comp, function(x) {
   align.outp <- gsub("Approximate Invariance Was Not Found For This Parameter.", 
        "Approximate Measurement Invariance Holds For Groups:", align.outp)
 
-  if(mplus.version %in% c("8.8", "8.9", "8.10") & estimator!="BAYES") { 
+  if(mplus.version %in% c("8.8", "8.9", "8.10", "8.11") & estimator!="BAYES") { 
     
       align.outp1 <- strsplit(align.outp, "\n\n\n Loadings for ", fixed=T)[[1]]
      

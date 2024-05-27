@@ -8,7 +8,7 @@ extractAlignment(
   file = "fixed.out",
   nice.tables = FALSE,
   silent = FALSE,
-  what = c("summary", "ranking", "comparisons", "contributions")
+  what = c("summary", "ranking", "comparisons", "contributions", "savedata")
 )
 }
 \arguments{
@@ -18,7 +18,7 @@ extractAlignment(
 
 \item{silent}{Logical. Used for debugging.}
 
-\item{what}{Character vector. What exactly to extract. Possible values: "summary", "ranking", "comparisons", "contributions".}
+\item{what}{Character vector. What exactly to extract. Possible values: "summary", "ranking", "comparisons", "contributions", "savedata".}
 }
 \value{
 A list of summary tables.

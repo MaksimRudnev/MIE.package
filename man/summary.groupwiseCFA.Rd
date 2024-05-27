@@ -2,13 +2,28 @@
 % Please edit documentation in R/helpers.R
 \name{summary.groupwiseCFA}
 \alias{summary.groupwiseCFA}
-\title{Summarize a list of CFAs produces by lavaan}
+\alias{gsumCFA}
+\title{Summarize a list of CFAs produced by lavaan}
 \usage{
-\method{summary}{groupwiseCFA}(model.list)
+\method{summary}{groupwiseCFA}(
+  model.list,
+  what = c("cfi", "rmsea", "srmr"),
+  diagnose = T,
+  corrs = F,
+  mod = F
+)
+
+gsumCFA(
+  model.list,
+  what = c("cfi", "rmsea", "srmr"),
+  diagnose = T,
+  corrs = F,
+  mod = F
+)
 }
 \arguments{
 \item{model.list}{A list of models in lavaan syntax. Can be an object of class groupwise.CFA}
 }
 \description{
-Summarize a list of CFAs produces by lavaan
+Summarize a list of CFAs produced by lavaan
 }

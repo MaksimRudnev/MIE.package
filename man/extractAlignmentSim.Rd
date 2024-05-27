@@ -6,7 +6,8 @@
 \usage{
 extractAlignmentSim(
   sim.outputs = c("sim500.out", "sim100.out", "sim1000.out"),
-  silent = FALSE
+  silent = FALSE,
+  manual = F
 )
 }
 \arguments{

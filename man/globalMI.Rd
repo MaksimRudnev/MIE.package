@@ -8,7 +8,8 @@ globalMI(
   ...,
   chi.sq = FALSE,
   omit = "",
-  what = c("cfi", "tli", "rmsea", "srmr", "chisq")
+  what = c("cfi", "tli", "rmsea", "srmr", "chisq"),
+  partial = NULL
 )
 }
 \arguments{

@@ -994,8 +994,7 @@ if(any(!fit.index %in% c("cfi", "rmsea", "srmr"))) {
      group = clp[[x]], 
      cluster = rep(x, length(clp[[x]])), stringsAsFactors = F)))
     coords <- merge(coords, clusters, by = "group")
-    find_hull <- function(df) df[chull(df$dim1, df$dim2), ]
-    hulls <- plyr::ddply(coords, "cluster", find_hull)
+    
     
     d1 <- reshape2::melt(dist1)
     d1 <- d1[d1$value!=0,]

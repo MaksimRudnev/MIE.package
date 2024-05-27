@@ -91,13 +91,30 @@ groupwiseCFA <- function(model,  data, group, ..., out = NULL,
         
 }
 
-#' Summarize a list of CFAs produces by lavaan
+#' Summarize a list of CFAs produced by lavaan
 #'
 #' @param model.list A list of models in lavaan syntax. Can be an object of class groupwise.CFA
 #'
 #' @export
-summary.groupwiseCFA <- function(model.list, what = c("cfi", "rmsea", "srmr"), diagnose = T, corrs = F) { # list of fitted CFAs
+summary.groupwiseCFA <- function(model.list, what = c("cfi", "rmsea", "srmr"), diagnose = T, corrs = F, mod = F) { # list of fitted CFAs
  
+  
+  
+  # fix duplicated names
+  
+  if(any(duplicated(names(model.list)))) {
+    
+    old.names = names(model.list)
+    new.nmz = old.names
+    
+    for(x in old.names) 
+      new.nmz[old.names== x] = paste0(old.names[old.names == x], ".",
+                                      1:sum(old.names == x))
+    
+    names(model.list) <- new.nmz
+  }
+  
+  
   
   fit.idx = sapply(model.list, function(x) {
     if(lavInspect(x, "converged"))
@@ -110,12 +127,40 @@ summary.groupwiseCFA <- function(model.list, what = c("cfi", "rmsea", "srmr"), d
   if(diagnose) {
     diagnostics = data.frame(
       converged=ifelse(sapply(model.list, lavInspect, "converged"), "", "NO"),
-      corr.greater.1=sapply(model.list, function(x) 
-        ifelse(any(abs(unlist(lavInspect(x,"cor.lv")))>1), "YES", "")),
-      negat.lv.variance = sapply(model.list, function(x)
-        ifelse(any(diag(lavInspect(x, "cov.lv"))<0), "YES", "")),
-      negat.ov.variance = sapply(model.list, function(x)
-        ifelse(any(diag(lavInspect(x, "cov.ov"))<0), "YES", ""))
+      corr.greater.1 =
+        
+        # sapply(model.list, function(x) 
+        # ifelse(any(abs(unlist(lavInspect(x,"cor.lv")))>1), "YES", "")),
+      
+      ifelse(any(
+        sapply(model.list, 
+               function(x) 
+                 any(abs(unlist(lavInspect(x, "cor.lv", drop.list.single.group = F))) > 1))
+               
+        ), "YES", ""),
+      
+      negat.lv.variance = 
+        # sapply(model.list, function(x)
+        # ifelse(any(diag(lavInspect(x, "cov.lv"))<0), "YES", "")),
+      
+      ifelse(any(
+        sapply(model.list, 
+               function(x) 
+                 any(sapply(lavInspect(x, "cov.lv", drop.list.single.group = F), diag) < 0)
+               
+        )), "YES", ""),
+      
+      
+      negat.ov.variance = 
+        # sapply(model.list, function(x)
+        # ifelse(any(diag(lavInspect(x, "cov.ov"))<0), "YES", ""))
+      
+        ifelse(any(
+          sapply(model.list, 
+                 function(x) 
+                   any(sapply(lavInspect(x, "cov.ov", drop.list.single.group = F), diag) < 0)
+                 
+        )), "YES", "")
     ) 
     
     out  = cbind(diagnostics, t(fit.idx))
@@ -128,16 +173,18 @@ summary.groupwiseCFA <- function(model.list, what = c("cfi", "rmsea", "srmr"), d
   
   if(corrs) {
     
-    corrs <- lapply(hindi.small.models, function(x) {
-      corrs.mx = lavInspect(x, "cor.lv") 
-      corrs.mx[upper.tri(corrs.mx, diag = T)] <- NA
-      if(all(is.na(corrs.mx))) {
+    corrs <- lapply(model.list, function(x) {
+      corrs.mx = lavInspect(x, "cor.lv", drop.list.single.group = F) 
+      corrs.mx.mlt = melt(lapply(corrs.mx, function(x) { x[upper.tri(x, diag = T)] <- NA; x}))
+      
+      if(all(is.na(corrs.mx.mlt$value))) {
         data.frame(factors = as.character(NA),
                    cor.factors = NA)
       } else {
-        corrs.mx = melt(corrs.mx) %>% filter(!is.na(value)) %>%
+        corrs.mx = filter(corrs.mx.mlt, !is.na(value)) %>%
           filter(value == max(value))
-        data.frame(factors = paste(corrs.mx[[1]], corrs.mx[[2]]),
+        data.frame(factors = paste(ifelse(is.na(corrs.mx[[4]]), "", paste0(corrs.mx[[4]], ":")), 
+                                   corrs.mx[[1]], corrs.mx[[2]]),
                    cor.factors = corrs.mx[[3]])
       }
     })
@@ -150,14 +197,35 @@ summary.groupwiseCFA <- function(model.list, what = c("cfi", "rmsea", "srmr"), d
     
   }
   
+  if(mod) {
+    
+    max.mi <- sapply(model.list, function(x) {
+      if(lavInspect(x, "converged")) { 
+        mi = modindices(x, sort = T)
+        max.mi = mi[1,1:4]
+        max.mi.name =  gsub("~~",  " W ",  paste(max.mi[1:3], collapse = ""))
+        max.mi.value = max.mi[[4]]
+        return(data.frame(max.mi.name = max.mi.name, max.mi.value = max.mi.value))
+      } else {
+        return(data.frame(max.mi.name = NA, max.mi.value = NA))
+      }
+      
+    })
+    
+    out = cbind(out, t(max.mi))
+    
+    }
+    
+  
   
   return(out)
      
+}
 
-  
-  
-  }
 
+#' @rdname summary.groupwiseCFA
+#' @export
+gsumCFA <- summary.groupwiseCFA
 
 
 
