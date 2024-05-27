@@ -8,7 +8,7 @@ extractAlignment(
   file = "fixed.out",
   nice.tables = FALSE,
   silent = FALSE,
-  what = c("summary", "ranking", "comparisons", "contributions", "savedata")
+  what = c("summary", "ranking", "comparisons", "contributions")
 )
 }
 \arguments{
