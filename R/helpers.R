@@ -96,7 +96,7 @@ groupwiseCFA <- function(model,  data, group, ..., out = NULL,
 #' @param model.list A list of models in lavaan syntax. Can be an object of class groupwise.CFA
 #'
 #' @export
-summary.groupwiseCFA <- function(model.list, what = c("cfi", "rmsea", "srmr"), diagnose = T, corrs = F, mod = F) { # list of fitted CFAs
+summary.groupwiseCFA <- function(model.list, what = c("cfi", "rmsea", "srmr"), diagnose = T, corrs = F, mod = F, n = F) { # list of fitted CFAs
  
   
   
@@ -146,7 +146,7 @@ summary.groupwiseCFA <- function(model.list, what = c("cfi", "rmsea", "srmr"), d
       ifelse(any(
         sapply(model.list, 
                function(x) 
-                 any(sapply(lavInspect(x, "cov.lv", drop.list.single.group = F), diag) < 0)
+                 any(unlist(sapply(lavInspect(x, "cov.lv", drop.list.single.group = F), diag)) < 0)
                
         )), "YES", ""),
       
@@ -175,7 +175,7 @@ summary.groupwiseCFA <- function(model.list, what = c("cfi", "rmsea", "srmr"), d
     
     corrs <- lapply(model.list, function(x) {
       corrs.mx = lavInspect(x, "cor.lv", drop.list.single.group = F) 
-      corrs.mx.mlt = melt(lapply(corrs.mx, function(x) { x[upper.tri(x, diag = T)] <- NA; x}))
+      corrs.mx.mlt = reshape2::melt(lapply(corrs.mx, function(x) { x[upper.tri(x, diag = T)] <- NA; x}))
       
       if(all(is.na(corrs.mx.mlt$value))) {
         data.frame(factors = as.character(NA),
@@ -216,7 +216,21 @@ summary.groupwiseCFA <- function(model.list, what = c("cfi", "rmsea", "srmr"), d
     
     }
     
-  
+  if(n) {
+    
+    n <- sapply(model.list, function(x) {
+      if(lavInspect(x, "converged")) { 
+        sum(lavInspect(x, "nobs"))
+      } else {
+        NA
+      }
+      
+    })
+    
+    out = cbind(out, n = n)
+    
+  }
+
   
   return(out)
      

@@ -4,22 +4,27 @@
 #' @description Computes configural, metric, and scala invariance models and compares them.
 #' @param chi.sq Logical, if chi-square should be reported.
 #' @param omit Character (vector). Which model should be omitted. Possible values "configural", "metric", "scalar".
+#' @param partial List of parameters to release constraints, see `group.partial` of \code{\link[lavOptions]{cfa}}
+#' @param more More constraints, currently limited to `residuals` and `means`. 
 #' @param ... Formula, group, and all the other eligible arguments of \code{\link[lavaan]{cfa}} function.
 #'
 #' @export
 globalMI <- function(..., chi.sq=FALSE, omit = "", what = c("cfi", "tli", "rmsea", "srmr", "chisq"),
-                     partial = NULL) {
+                     partial = NULL, 
+                     more = NULL ) {
+  
+  
   
   fake.mdl <- lavaan::cfa(..., do.fit=F)
   
   if(any(lavaan::parameterTable(fake.mdl)$op =="|")) {
     message("There are thresholds in the model")
     
-    models.to.run <- c("configural", "thresholds", "scalar")[(!c("configural", "thresholds", "scalar") %in% omit)]
+    models.to.run <- c("configural", "thresholds", "scalar", more)[(!c("configural", "thresholds", "scalar") %in% omit)]
     
   } else {
     
-    models.to.run <- c("configural", "metric", "scalar")[(!c("configural", "metric", "scalar") %in% omit)]
+    models.to.run <- c("configural", "metric", "scalar", more)[(!c("configural", "metric", "scalar") %in% omit)]
     
   }
   
@@ -38,11 +43,20 @@ globalMI <- function(..., chi.sq=FALSE, omit = "", what = c("cfi", "tli", "rmsea
                           partial.thresholds = "thresholds", 
                           
                           scalar = c("loadings", "intercepts", "thresholds"),
-                          partial.scalar = c("loadings", "intercepts", "thresholds"))
+                          partial.scalar = c("loadings", "intercepts", "thresholds"),
+                          
+                          means = c("loadings", "intercepts", "thresholds", "means"),
+                          partial.means = c("loadings", "intercepts", "thresholds", "means"),
+                          
+                          residuals = c("loadings", "intercepts", "thresholds", "residuals"),
+                          partial.residuals = c("loadings", "intercepts", "thresholds", "residuals")
+                          
+                          
+                          )
     
     if("group.partial" %in% ...names() )
       group.partial = list(...)[["group.partial"]]
-    else 
+    else
       group.partial = list()
     
     if(grepl("partial", m)) 

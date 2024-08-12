@@ -2,7 +2,9 @@
 #' 
 #' @param sim.outputs a character vector of file names containing simulation results of alignment ran in Mplus. 
 #' @param silent Logical. Used for debugging.
-#' @details Best used as part of \code{\link[MIE]{runAlignment}}
+#' @param manual logical. If `TURE`,  correlations between population and estimated values are computed using the saved values (`MONTECARLO:RESULTS = filename.txt` should be in the Mplus input), if `FALSE`, the correlations are extracted from the Mplus output.
+#' @param adjust logical. Whether correlations should be adjusted using Fisher transformation (more accurate) or not (default in Mplus). Only makes sense when `manual = TRUE`.
+#' @details Best used as part of \code{\link[MIE]{runAlignment}} To match the Mplus output, the correlations are not adjusted for non-normality when averaging.
 #' 
 #' @examples 
 #' \dontrun{  
@@ -12,7 +14,8 @@
 #' @return Invisibly returns a summary table.
 #' @seealso \code{\link[MIE]{runAlignment}}  and \code{\link[MIE]{extractAlignment}} 
 #' @export
-extractAlignmentSim <- function(sim.outputs = c("sim500.out", "sim100.out", "sim1000.out"), silent = FALSE, manual = F) {
+extractAlignmentSim <- function(sim.outputs = c("sim500.out", "sim100.out", "sim1000.out"), silent = FALSE, manual = F, 
+                                adjust = F) {
   
   
   otp <- lapply(sim.outputs, function(x) {
@@ -31,26 +34,34 @@ extractAlignmentSim <- function(sim.outputs = c("sim500.out", "sim100.out", "sim
     
     if(manual) {
       
-      # extract parameters and correlate averages
+      # 1. extract parameters and correlate averages
       partable <- MIE:::extractParameters(string = f)
-      partable.means <- partable[partable$L2 == "Means",c("Population", "parameter", "ESTIMATES_Average")]
+      partable.means <- partable[partable$L2 == "Means" &!grepl("\\#",partable$parameter ),c("Population", "parameter", "ESTIMATES_Average", "L1")]
+      partable.vars <- partable[partable$L2 == "Variances" &!grepl("\\#",partable$parameter ),c("Population", "parameter", "ESTIMATES_Average", "L1")]
       
-      
-   corr.of.averages =   sapply(setNames(nm=unique(partable.means$parameter)), function(latent.factor)
+   corr.of.averages =   sapply(
+     setNames(nm=unique(partable.means$parameter)), function(latent.factor)
         cor(partable.means$ESTIMATES_Average[partable.means$parameter == latent.factor], 
             partable.means$Population[partable.means$parameter == latent.factor]))
    
-   corr.of.averages.N = length(unique(partable$L1))
+   corr.of.vars =   sapply(
+     setNames(nm=unique(partable.vars$parameter)), function(latent.factor)
+       cor(partable.vars$ESTIMATES_Average[partable.vars$parameter == latent.factor], 
+           partable.vars$Population[partable.vars$parameter == latent.factor]))
+   
+   corr.of.averages.N = length(unique(partable.means$L1))
       
       
-      # extract each replication mean, correlate to population value, and then average
+      # 2. extract each replication mean/variance, correlate to population value, and then average
 
     params.for.each.replication <- MIE:::getSavedParams(x)
     
     means.for.each.replication <- lapply(params.for.each.replication, function(y) dplyr::filter(y, L2 == "alpha"))
     
-   
-   #reshape2::melt(means.for.each.replication, level = "L1")
+    
+    # check if it matches with params
+    # Reduce(rbind, means.for.each.replication) %>% group_by(Var2, L1, L2) %>% summarise(est = mean(est))
+    # partable.means
    
    pop.values = partable[partable$L2=="Means" & !grepl("#",partable$parameter), 
                          c("L1", "parameter", "Population")]
@@ -71,28 +82,101 @@ extractAlignmentSim <- function(sim.outputs = c("sim500.out", "sim100.out", "sim
                                y$Population[y$Var2 == latent.factor])
                         )
                 )
-  
+   
+   if(adjust) { 
+     cors.df = psych::fisherz(cors.df) 
+     
+     if(any(class(cors.df) %in% c("matrix", "data.frame"))) {
+       cors.m = psych::fisherz2r(apply(cors.df, 1, mean))
+        cors.sd = psych::fisherz2r(apply(cors.df, 1, sd))
+     } else {
+       cors.m = psych::fisherz2r(mean(cors.df))
+       cors.sd = psych::fisherz2r(sd(cors.df))
+     }
+     
+   } else {
+     
+     if(any(class(cors.df) %in% c("matrix", "data.frame")))  {
+       cors.m = apply(cors.df, 1, mean) 
+       cors.sd = apply(cors.df, 1, sd) 
+     } else  {
+       cors.m = mean(cors.df)
+       cors.sd = sd(cors.df)
+     }}
+   
+   # repeat for factor variances
+   vars.for.each.replication <- lapply(params.for.each.replication, function(y) dplyr::filter(y, L2 == "psi"))
+
+   var1.fltr = aggregate(list(value.fltr=vars.for.each.replication[[1]]$value), vars.for.each.replication[[1]][,c('Var2', 'L1')], first) # filter to extract variances/and exclude covariances
+   
+   vars.for.each.replication <- lapply(vars.for.each.replication, function(y) merge(y, var1.fltr, by = c("Var2", "L1"), all.x = T) %>% dplyr::filter(value == value.fltr))
+   
+
+   # check if it matches with params
+   # Reduce(rbind, vars.for.each.replication) %>% group_by(Var2, L1, L2) %>% summarise(est = mean(est))
+   # partable.vars
+   # 
+   pop.values.vars = partable[partable$L2=="Variances" & !grepl("#",partable$parameter), 
+                         c("L1", "parameter", "Population")]
+   pop.values.vars$L1 <- gsub("\\s", ".", toupper(gsub("Group ", "", pop.values.vars$L1)))
+   
+   
+   merged.dats.vars = lapply(vars.for.each.replication, function(x) {
+     merge(x, pop.values.vars, 
+           by.x = c("L1", "Var2"), 
+           by.y = c("L1", "parameter"))
+   })
+   
+   cors.df.vars = sapply(merged.dats.vars, 
+                    function(y) 
+                      sapply(setNames(nm=unique(y$Var2)), 
+                             function(latent.factor)
+                               
+                               cor(y$est[y$Var2 == latent.factor], 
+                                   y$Population[y$Var2 == latent.factor])
+                      )
+   )
+   
+   if(adjust) { 
+     cors.df.vars = psych::fisherz(cors.df.vars) 
+     
+     if(any(class(cors.df.vars) %in% c("matrix", "data.frame"))) {
+       cors.v.m = psych::fisherz2r(apply(cors.df.vars, 1, mean))
+       cors.v.sd = psych::fisherz2r(apply(cors.df.vars, 1, sd))
+     } else {
+       cors.v.m = psych::fisherz2r(mean(cors.df.vars))
+       cors.v.sd = psych::fisherz2r(sd(cors.df.vars))
+     }
+     
+   } else {
+     
+     if(any(class(cors.df.vars) %in% c("matrix", "data.frame")))  {
+       cors.v.m = apply(cors.df.vars, 1, mean) 
+       cors.v.sd = apply(cors.df.vars, 1, sd) 
+     } else  {
+       cors.v.m = mean(cors.df.vars)
+       cors.v.sd = sd(cors.df.vars)
+     }}
+   
     
     # output
     list(
       "Correlations and mean square error of population and estimate values" =
-        list("Correlations Mean Average"={ if(is.data.frame(cors.df)) 
-          apply(cors.df, 1, mean) else mean(cors.df)},
-                     "Correlations Variance Average"=NA, 
-                     "Correlations Mean SD" = { if(is.data.frame(cors.df)) 
-                       apply(cors.df, 1, sd) else sd(cors.df)}, 
-                     "Correlations Variance SD" = NA, 
-                     "MSE Mean Average" = NA, 
-                     "MSE Variance Average"= NA, 
-                     "MSE Mean SD" = NA, 
-                     "MSE Variance SD" = NA,
-                     N = ncol(cors.df)),
-        
+        list("Means (average correlation)"= cors.m,
+             "Variances (average correlation)"= cors.v.m, 
+             "Means (SD of correlations)" = cors.sd, 
+             "Variances (SD of correlations)" = cors.v.sd, 
+           "MSE Mean Average" = NA, 
+           "MSE Variance Average"= NA, 
+           "MSE Mean SD" = NA, 
+           "MSE Variance SD" = NA,
+           N = ncol(cors.df)),
+
       "Correlation and mean square error of the average estimates" = 
-        list("Correlation of average means with true" = corr.of.averages, 
-          "Correlation of average variances with true" = NA, 
-          "MSE of average means with true" = NA, 
-          "MSE of average variances with true" = NA,
+        list("Mean" = corr.of.averages, 
+          "Variance" = corr.of.vars, 
+          "MSE mean" = NA, 
+          "MSE variance" = NA,
           N = corr.of.averages.N
         )
          
@@ -102,7 +186,7 @@ extractAlignmentSim <- function(sim.outputs = c("sim500.out", "sim100.out", "sim
       
     } else {
     
-    if(mplus.version == "8.10") { 
+    if(mplus.version %in%  c( "8.10",  "8.11")) { 
       cor.tab1 =  sub(".*CORRELATIONS AND MEAN SQUARE ERROR OF POPULATION AND ESTIMATE VALUES(.*?)\n\n\n.*", "\\1", f)
       cor.tab2 =  sub(".*CORRELATION AND MEAN SQUARE ERROR OF THE AVERAGE ESTIMATES(.*?)\n\n\n.*", "\\1", f)
       cor.tabs = list(cor.tab1, cor.tab2)
