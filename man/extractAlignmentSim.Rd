@@ -7,13 +7,18 @@
 extractAlignmentSim(
   sim.outputs = c("sim500.out", "sim100.out", "sim1000.out"),
   silent = FALSE,
-  manual = F
+  manual = F,
+  adjust = T
 )
 }
 \arguments{
 \item{sim.outputs}{a character vector of file names containing simulation results of alignment ran in Mplus.}
 
 \item{silent}{Logical. Used for debugging.}
+
+\item{manual}{logical. If \code{TRUE},  correlations between population and estimated values are computed using the saved values (\code{MONTECARLO:RESULTS = filename.txt} should be in the Mplus input), if \code{FALSE}, the correlations are extracted from the Mplus output.}
+
+\item{adjust}{logical. Whether correlations should be adjusted using Fisher transformation (more accurate) or not (default in Mplus). Only makes sense when \code{manual = TRUE}.}
 }
 \value{
 Invisibly returns a summary table.
@@ -22,7 +27,7 @@ Invisibly returns a summary table.
 Extracts summaries of alignment simulations from Mplus output file
 }
 \details{
-Best used as part of \code{\link[MIE]{runAlignment}}
+Best used as part of \code{\link[MIE]{runAlignment}}. To match the Mplus output, the correlations are not adjusted for non-normality when averaging; when manual and adjusted, correlations are first Fisher-transformed, then averaged, then transformed back to \emph{r} metric.
 }
 \examples{
 \dontrun{  

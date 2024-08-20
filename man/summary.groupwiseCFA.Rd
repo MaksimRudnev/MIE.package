@@ -10,7 +10,8 @@
   what = c("cfi", "rmsea", "srmr"),
   diagnose = T,
   corrs = F,
-  mod = F
+  mod = F,
+  n = F
 )
 
 gsumCFA(
@@ -18,7 +19,8 @@ gsumCFA(
   what = c("cfi", "rmsea", "srmr"),
   diagnose = T,
   corrs = F,
-  mod = F
+  mod = F,
+  n = F
 )
 }
 \arguments{

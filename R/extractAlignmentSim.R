@@ -2,9 +2,9 @@
 #' 
 #' @param sim.outputs a character vector of file names containing simulation results of alignment ran in Mplus. 
 #' @param silent Logical. Used for debugging.
-#' @param manual logical. If `TURE`,  correlations between population and estimated values are computed using the saved values (`MONTECARLO:RESULTS = filename.txt` should be in the Mplus input), if `FALSE`, the correlations are extracted from the Mplus output.
-#' @param adjust logical. Whether correlations should be adjusted using Fisher transformation (more accurate) or not (default in Mplus). Only makes sense when `manual = TRUE`.
-#' @details Best used as part of \code{\link[MIE]{runAlignment}} To match the Mplus output, the correlations are not adjusted for non-normality when averaging.
+#' @param manual logical. If \code{TRUE},  correlations between population and estimated values are computed using the saved values (\code{MONTECARLO:RESULTS = filename.txt} should be in the Mplus input), if \code{FALSE}, the correlations are extracted from the Mplus output.
+#' @param adjust logical. Whether correlations should be adjusted using Fisher transformation (more accurate) or not (default in Mplus). Only makes sense when \code{manual = TRUE}.
+#' @details Best used as part of \code{\link[MIE]{runAlignment}}. To match the Mplus output, the correlations are not adjusted for non-normality when averaging; when manual and adjusted, correlations are first Fisher-transformed, then averaged, then transformed back to \emph{r} metric.
 #' 
 #' @examples 
 #' \dontrun{  
@@ -14,8 +14,7 @@
 #' @return Invisibly returns a summary table.
 #' @seealso \code{\link[MIE]{runAlignment}}  and \code{\link[MIE]{extractAlignment}} 
 #' @export
-extractAlignmentSim <- function(sim.outputs = c("sim500.out", "sim100.out", "sim1000.out"), silent = FALSE, manual = F, 
-                                adjust = F) {
+extractAlignmentSim <- function(sim.outputs = c("sim500.out", "sim100.out", "sim1000.out"), silent = FALSE, manual = F, adjust = T) {
   
   
   otp <- lapply(sim.outputs, function(x) {
@@ -67,6 +66,8 @@ extractAlignmentSim <- function(sim.outputs = c("sim500.out", "sim100.out", "sim
                          c("L1", "parameter", "Population")]
    pop.values$L1 <- gsub("\\s", ".", toupper(gsub("Group ", "", pop.values$L1)))
    
+   # fix: because mplus shortens some variable names
+   pop.values$parameter <- substr(pop.values$parameter, 1,8)
    
    merged.dats = lapply(means.for.each.replication, function(x) {
      merge(x, pop.values, 
@@ -107,7 +108,7 @@ extractAlignmentSim <- function(sim.outputs = c("sim500.out", "sim100.out", "sim
    # repeat for factor variances
    vars.for.each.replication <- lapply(params.for.each.replication, function(y) dplyr::filter(y, L2 == "psi"))
 
-   var1.fltr = aggregate(list(value.fltr=vars.for.each.replication[[1]]$value), vars.for.each.replication[[1]][,c('Var2', 'L1')], first) # filter to extract variances/and exclude covariances
+   var1.fltr = aggregate(list(value.fltr=vars.for.each.replication[[1]]$value), vars.for.each.replication[[1]][,c('Var2', 'L1')], dplyr::first) # filter to extract variances/and exclude covariances
    
    vars.for.each.replication <- lapply(vars.for.each.replication, function(y) merge(y, var1.fltr, by = c("Var2", "L1"), all.x = T) %>% dplyr::filter(value == value.fltr))
    
@@ -120,6 +121,8 @@ extractAlignmentSim <- function(sim.outputs = c("sim500.out", "sim100.out", "sim
                          c("L1", "parameter", "Population")]
    pop.values.vars$L1 <- gsub("\\s", ".", toupper(gsub("Group ", "", pop.values.vars$L1)))
    
+   # fix: because mplus shortens some variable names
+   pop.values.vars$parameter <- substr(pop.values.vars$parameter, 1,8)
    
    merged.dats.vars = lapply(vars.for.each.replication, function(x) {
      merge(x, pop.values.vars, 

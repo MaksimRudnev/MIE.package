@@ -9,7 +9,8 @@ globalMI(
   chi.sq = FALSE,
   omit = "",
   what = c("cfi", "tli", "rmsea", "srmr", "chisq"),
-  partial = NULL
+  partial = NULL,
+  more = NULL
 )
 }
 \arguments{
@@ -18,6 +19,10 @@ globalMI(
 \item{chi.sq}{Logical, if chi-square should be reported.}
 
 \item{omit}{Character (vector). Which model should be omitted. Possible values "configural", "metric", "scalar".}
+
+\item{partial}{List of parameters to release constraints, see `group.partial` of \code{\link[lavOptions]{cfa}}}
+
+\item{more}{More constraints, currently limited to `residuals` and `means`.}
 }
 \description{
 Computes configural, metric, and scala invariance models and compares them.
