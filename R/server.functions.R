@@ -1,35 +1,54 @@
 ## Global functions #####
 
-#' Test for measureent invariance in three steps
+#' Conventional test of measurement invariance in three steps
 #' @description Computes configural, metric, and scala invariance models and compares them.
+#' @param ... Formula, group, and all the other eligible arguments of \code{\link[lavaan]{cfa}} function.
 #' @param chi.sq Logical, if chi-square should be reported.
 #' @param omit Character (vector). Which model should be omitted. Possible values "configural", "metric", "scalar".
+#' @param what Character (vector) of fit measures to report (see \code{\link[lavaan]{fitMeasures}}
 #' @param partial List of parameters to release constraints, see `group.partial` of \code{\link[lavOptions]{cfa}}
-#' @param more More constraints, currently limited to `residuals` and `means`. 
-#' @param ... Formula, group, and all the other eligible arguments of \code{\link[lavaan]{cfa}} function.
+#' @param more More constraints, currently limited to `residuals` and `means`.
+#' @param ho Currently defunct, for the higher-order factor models invariance see \code{\link[MIE]{globalMIH}}
 #'
 #' @export
 globalMI <- function(..., chi.sq=FALSE, omit = "", what = c("cfi", "tli", "rmsea", "srmr", "chisq"),
                      partial = NULL, 
-                     more = NULL ) {
+                     more = NULL, ho = F) {
   
   
   
   fake.mdl <- lavaan::cfa(..., do.fit=F)
   
+  
+  
+  # Put here the function to test for HO invariance - in progress
+  # fake.pars = lavaan::parameterTable(fake.mdl)
+  # all.lvs = subset(fake.pars, group == 1 & op == "=~")
+  # ho = any(all.lvs$lhs %in% all.lvs$rhs)
+  
+  
+  # define constraints
   if(any(lavaan::parameterTable(fake.mdl)$op =="|")) {
-    message("There are thresholds in the model")
-    
+    message("There are thresholds in the model.")
+    # if categorical, follow Wu & Estabrook
     models.to.run <- c("configural", "thresholds", "scalar", more)[(!c("configural", "thresholds", "scalar") %in% omit)]
     
   } else {
-    
+    # if not, follow the bottom-up
     models.to.run <- c("configural", "metric", "scalar", more)[(!c("configural", "metric", "scalar") %in% omit)]
     
   }
   
   if(length(partial)>0) 
     models.to.run <- c(models.to.run, paste0("partial.", models.to.run[models.to.run!="configural"] ))
+  
+  if(ho) {
+    
+    # 1. detect number of orders
+    # 2. detect LVs at each order
+    # 3. add to the 
+    
+  }
   
   mdls <- lapply(setNames(models.to.run, nm=models.to.run), function(m) {
     
@@ -140,6 +159,98 @@ globalMI <- function(..., chi.sq=FALSE, omit = "", what = c("cfi", "tli", "rmsea
   print(out2, digits=3, row.names = TRUE, na.print = "" )
   
   invisible(list(models=mdls, LRT=out1, fit=out2))
+  
+}
+
+#' Test for measurement invariance for Higher-Order Factor models
+#' @description Computes configural, multiple metric, and multiple scalar invariance models and compares them. 
+#' @param model lavaan syntax model definition. Keep it simple as it will be appended by the function. Please use one of the loadings to identify the model at each factor order.
+#' @param ... Data, group, and all the other eligible arguments of \code{\link[lavaan]{cfa}} function.
+#' @param chi.sq Logical, if chi-square should be reported.
+#' @param omit Currently defunct. Character (vector). Which model should be omitted. Possible values "configural", "metric", "scalar".
+#' @param what Character (vector) of fit measures to report (see \code{\link[lavaan]{fitMeasures}}
+#' @param partial List of parameters to release constraints, see `group.partial` of \code{\link[lavOptions]{cfa}}
+#' @details
+#' For convenience, does not follow Rudnev et al. (2018) but instead the following series of constraints: 
+#' \enumerate{
+#'   \item Configural All loadings are free
+#'   \item Metric-1 Loadings for the first-order factors are constrained to equality, first-order intercepts are free, the other means/intercepts are fixed to 0.
+#'   \item Metric-2, 3 etc. Applies the factor loading equality constraints to second-, third-, etc order factors.
+#'   \item Scalar-1 Constrains item intercepts to equality, while freely estimating the first-order factor means/intercepts.
+#'   \item Scalar-2, 3, etc. Sets the means/intercepts of first-order, second-order, etc.  factors free while fixing to 0 all the other means/intercepts (except for the lowest level item intercepts)
+#' }
+#' @export
+globalMIH <- function(model = model, ..., chi.sq=FALSE, omit = "", what = c("cfi", "tli", "rmsea", "srmr", "chisq"),
+                      partial = NULL, 
+                      more = NULL) {
+  
+  fake.mdl = cfa(model = model, ..., do.fit = F)
+  fake.pars = lavaan::parameterTable(fake.mdl)
+  fake.pars1 = subset(fake.pars, group == 1)
+  
+  all.lvs = subset(fake.pars1, op == "=~")
+ 
+  # extract HO structure
+  a = all.lvs
+  lvs.oh = list()
+  while(any(a$rhs %in% a$lhs)) {
+    a = subset(a, rhs %in% lhs)
+    lvs.oh[[length(lvs.oh)+1]]<-unique(a$rhs)
+  }
+  lvs.oh[[length(lvs.oh)+1]]<-unique(a$lhs)
+  obs.vars = subset(fake.pars1, op == "=~" & !rhs %in% unique(unlist(lvs.oh)))$rhs
+  
+  # drop repeated factor names in each list
+  for(i in 1:length(lvs.oh) ) {
+    lvs.oh[[i]] <- lvs.oh[[i]][!lvs.oh[[i]] %in% lvs.oh[[ifelse(i<length(lvs.oh),
+                                                                i+1, NA)]]]
+  }
+  
+  # loadings constraints (releases)
+  unconstrained.loadings = lapply(1:length(lvs.oh), function(i)
+    subset(
+      fake.pars,
+      lhs %in% unlist(lvs.oh[i:3]) &
+        op == "=~",
+      select = c("lhs", "op", "rhs")
+    ) %>% apply(1, paste0, collapse = " "))
+  
+  # empty release of constraints means all factor loadings will be constrained
+  config.metric.via.partial = append(unconstrained.loadings, "")
+  
+  
+  # means/intercepts constraints
+  ngr = lavInspect(fake.mdl, "ngroups")
+  scalar.syntax.adds =   lapply(1:length(lvs.oh), function(i)
+    paste(
+      paste0(lvs.oh[[i]], " ~ c(0,", paste(rep("NA", ngr - 1), collapse=","), ")*1;", collapse = "\n"),
+      "\n\n",
+      paste0(unlist(lvs.oh[-i]), " ~ 0*1;", collapse = "\n")
+    ))
+  scalar.syntax.adds = append(scalar.syntax.adds, paste0(unlist(lvs.oh), " ~ 0*1;", collapse = "\n") )
+  
+  
+  # fit the models
+  conf.metric.fit = lapply(config.metric.via.partial, 
+                           function(partial.addition)
+                             cfa(model = model, ...,
+                                 group.equal = "loadings",
+                                 group.partial = unique(c(partial.addition, partial)))
+  )
+  
+  scalar.fit =   lapply(scalar.syntax.adds, 
+                        function(adds) 
+                          cfa(model = paste(model, "\n", adds), ...,
+                              group.equal = c("loadings", "intercepts"),
+                              group.partial = partial)
+  )
+  
+  all.fit = append(conf.metric.fit, scalar.fit)
+  
+  # extract fit
+  fit.ind = lav_compare(all.fit, what = what, LRT = chi.sq)
+  # return everything
+  invisible(list(models=all.fit, LRT=fit.ind$LRT, fit=fit.ind$fit))
   
 }
 

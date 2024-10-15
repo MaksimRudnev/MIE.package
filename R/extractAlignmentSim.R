@@ -206,8 +206,14 @@ extractAlignmentSim <- function(sim.outputs = c("sim500.out", "sim100.out", "sim
     
     dt1 <-sapply(seq(1, length(cor.tabs1), by=3), function(f.id) unlist(read.table(text=cor.tabs1[f.id+1:2])[-1]))
     colnames(dt1) = gsub(" ", "", cor.tabs1[seq(1, length(cor.tabs1), by=3)])
-    row.names(dt1)<-c("Correlations Mean Average", "Correlations Variance Average", "Correlations Mean SD", "Correlations Variance SD",
-                      "MSE Mean Average", "MSE Variance Average", "MSE Mean SD", "MSE Variance SD")
+    row.names(dt1)<-c("Average Correlation of Means", 
+                      "Average Correlations of Variances", 
+                      "Average Correlation of Means - SD", 
+                      "Average Correlations of Variances - SD",
+                      "Average MSE of Means", 
+                      "Average MSE of Variances", 
+                      "Average MSE of Means - SD", 
+                      "Average MSE of Variances - SD")
     
     
     cor.tabs2 <- strsplit(cor.tabs[[2]], "\n")[[1]]

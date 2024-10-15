@@ -2,7 +2,7 @@
 % Please edit documentation in R/server.functions.R
 \name{globalMI}
 \alias{globalMI}
-\title{Test for measureent invariance in three steps}
+\title{Conventional test of measurement invariance in three steps}
 \usage{
 globalMI(
   ...,
@@ -10,7 +10,8 @@ globalMI(
   omit = "",
   what = c("cfi", "tli", "rmsea", "srmr", "chisq"),
   partial = NULL,
-  more = NULL
+  more = NULL,
+  ho = F
 )
 }
 \arguments{
@@ -20,9 +21,13 @@ globalMI(
 
 \item{omit}{Character (vector). Which model should be omitted. Possible values "configural", "metric", "scalar".}
 
+\item{what}{Character (vector) of fit measures to report (see \code{\link[lavaan]{fitMeasures}}}
+
 \item{partial}{List of parameters to release constraints, see `group.partial` of \code{\link[lavOptions]{cfa}}}
 
 \item{more}{More constraints, currently limited to `residuals` and `means`.}
+
+\item{ho}{Current defunct, for the higher-order factor models invariance see \code{\link[MIE]{globalMIH}}}
 }
 \description{
 Computes configural, metric, and scala invariance models and compares them.
