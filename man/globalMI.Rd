@@ -27,7 +27,7 @@ globalMI(
 
 \item{more}{More constraints, currently limited to `residuals` and `means`.}
 
-\item{ho}{Current defunct, for the higher-order factor models invariance see \code{\link[MIE]{globalMIH}}}
+\item{ho}{Currently defunct, for the higher-order factor models invariance see \code{\link[MIE]{globalMIH}}}
 }
 \description{
 Computes configural, metric, and scala invariance models and compares them.

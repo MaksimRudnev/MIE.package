@@ -17,11 +17,11 @@ globalMIH(
 \arguments{
 \item{model}{lavaan syntax model definition. Keep it simple as it will be appended by the function. Please use one of the loadings to identify the model at each factor order.}
 
-\item{...}{Formula, group, and all the other eligible arguments of \code{\link[lavaan]{cfa}} function.}
+\item{...}{Data, group, and all the other eligible arguments of \code{\link[lavaan]{cfa}} function.}
 
 \item{chi.sq}{Logical, if chi-square should be reported.}
 
-\item{omit}{Character (vector). Which model should be omitted. Possible values "configural", "metric", "scalar".}
+\item{omit}{Currently defunct. Character (vector). Which model should be omitted. Possible values "configural", "metric", "scalar".}
 
 \item{what}{Character (vector) of fit measures to report (see \code{\link[lavaan]{fitMeasures}}}
 
