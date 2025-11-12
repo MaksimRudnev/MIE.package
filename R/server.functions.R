@@ -1,14 +1,18 @@
 ## Global functions #####
 
 #' Conventional test of measurement invariance in three steps
-#' @description Computes configural, metric, and scala invariance models and compares them.
+#' @description Computes a set of CFA models (e.g., configural, metric, and scalar/threshold invariance) and compares them to each other.
 #' @param ... Formula, group, and all the other eligible arguments of \code{\link[lavaan]{cfa}} function.
-#' @param chi.sq Logical, if chi-square should be reported.
+#' @param chi.sq Logical, if chi-square should be included in the model comparison table.
 #' @param omit Character (vector). Which model should be omitted. Possible values "configural", "metric", "scalar".
 #' @param what Character (vector) of fit measures to report (see \code{\link[lavaan]{fitMeasures}}
-#' @param partial List of parameters to release constraints, see `group.partial` of \code{\link[lavOptions]{cfa}}
-#' @param more More constraints, currently limited to `residuals` and `means`.
+#' @param partial List of parameters to release constraints, see `group.partial`  \code{\link[lavaan]{lavOptions}}
+#' @param more More models with extra constraints, currently limited to `residuals` and `means` which are added on the top of scalar model (or the most constrained otherwise, if 'scalar' is omitted)
 #' @param ho Currently defunct, for the higher-order factor models invariance see \code{\link[MIE]{globalMIH}}
+#' @details
+#' If the model has ordered indicators, then instead of configural-metric-scalar it fits configural-threshold-scalar sequence of models.
+#' @return A list with all the fitted models, an LRT test \code{\link[lavaan]{lavTestLRT}}, and a table of fit indices (`what`) and their differences across fitted models. 
+#' 
 #'
 #' @export
 globalMI <- function(..., chi.sq=FALSE, omit = "", what = c("cfi", "tli", "rmsea", "srmr", "chisq"),
@@ -518,7 +522,7 @@ MGCFAparameters <- function(model=NULL,
       mod<-try(do.call("cfa",  cfa.argument.list, quote = FALSE), silent=TRUE)
       options(show.error.messages = TRUE) 
       # Show error message or extract the parameters
-      if(class(mod)=="try-error") {
+      if(is(mod, "try-error")) {
         
         er1 <- paste(strsplit(mod, "ERROR: ")[[1]][2])
         if(length(er1>299)) er1 <- paste(strtrim( er1, 300), "...", sep="")
@@ -1202,7 +1206,7 @@ dmacs.signed <- function(LambdaR, ThreshR, LambdaF, ThreshF, MeanF, VarF, SD) {
 
 dmacs_lavaan <- function(fit, signed = F, pooled.sd = T, RefGroup = 1) {
   
-  if(class(fit)!='lavaan') warning("'fit' argument should be lavaan fitted object!")
+  if(!is(fit,'lavaan')) warning("'fit' argument should be lavaan fitted object!")
   est <- lapply(lavaan::lavInspect(fit, "est"), function(x) x[ c("lambda","alpha", "psi", "nu" )])
 
   Groups <- names(lavaan::lavInspect(fit, "est"))

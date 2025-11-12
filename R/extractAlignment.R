@@ -17,15 +17,7 @@ extractAlignment <-  function(file = "fixed.out",
                               what = c("summary", "ranking", "comparisons", "contributions") ) {
   
   if(!file.exists(file)) warning("File not found")
-  
-  # Basic extraction function  
-  extractBetween <- function(begin, end, string) {
-    mapply(function(a, b) substr(string, a, b),
-           gregexpr(begin, string)[[1]]+nchar(begin),
-           gregexpr(end, string)[[1]]-1
-    )  
-  }
-  
+
   
  
 
@@ -48,7 +40,12 @@ extractAlignment <-  function(file = "fixed.out",
    type.analysis <- type.analysis.s[grep("type", type.analysis.s, ignore.case = T)]
    type.analysis = ifelse(length(type.analysis)>0, 
                           gsub(";|(type)|=|\\s*", "", type.analysis, ignore.case = T),
-                          "MG")
+                      "MG")
+   
+   # groupung variable
+   if(type.analysis=="MG") {
+   grp.var = trimws(gsub("Grouping variable", "", sum.of.analysis.s[grep("Grouping variable", sum.of.analysis.s, ignore.case = T)]))
+   }
    
    
    variable.section = sub(".*VARIABLE:\\s*(.*?) *:.*", "\\1", b.string, ignore.case = T)
@@ -59,8 +56,7 @@ extractAlignment <-  function(file = "fixed.out",
  mplus.version <-  MIE:::MplusVersion(out.string = b.string) 
 
  if(!mplus.version %in% c("8.8", "8.9", "8.10", "8.11"))
-   warning("Mplus versions 8.7 and earlier are not officially supported,
-    but trying to extract summary anyways.") 
+   warning("Currently supported Mplus versions include 8.8-8.11, others are not officially supported, but still trying to extract summaries") 
  
  
   # Var list
@@ -110,9 +106,18 @@ extractAlignment <-  function(file = "fixed.out",
   names.end.index = gregexpr(";", b.string, ignore.case = T)
   names.end.index <- names.end.index[[1]][names.end.index[[1]] > names.begin.index][[1]]
 
+  if(names.begin.index==-1) {
+    
+    used.vars.list = var.list 
+    # except grouping/clustering variables
+    used.vars.list = used.vars.list[! tolower(substr(used.vars.list, 1,8)) %in% tolower(grp.var)]
+    
+    
+  } else {
   string.used.vars = substr(b.string, names.begin.index + attr(names.begin.index, "match.length"), names.end.index-1)
   
   used.vars.list = expand.varlist(string.used.vars)
+  }
   
 if(is.matrix(used.vars.list)) {
   # used.vars.list = var.list[which(used.vars.list[1,1] == var.list):which(used.vars.list[2,1] == var.list)]
@@ -153,8 +158,13 @@ if(is.matrix(used.vars.list)) {
   
   # output list to be filled
   output <- list()
-  
+  if("comparisons" %in% what) {
+    output[["mean.comparison"]] <- extractAlignedMeans(b.string)
+  }
+    
   # Extract mean comparison ######
+  extractAlignedMeans <- function(string) {
+
   if(!mplus.version %in% c("8.9", "8.10", "8.11") & 
      estimator!="BAYES") {
     
@@ -176,9 +186,13 @@ if(is.matrix(used.vars.list)) {
       "\n\n\n\n\n", b.string)
   }
   
-  
-  mean.comparison<-mean.comparison[!mean.comparison==""]
-  mean.comparison<- strsplit(mean.comparison,"(Results for Factor)")[[1]][-1]
+  if(length(mean.comparison)==0) {
+    warning("Could not extract mean comparison table.")
+    return(NA)
+    
+  } else {
+  mean.comparison <- mean.comparison[!mean.comparison==""]
+  mean.comparison <- strsplit(mean.comparison,"(Results for Factor)")[[1]][-1]
   
   mean.comparison<- gsub("\n\n$", "", mean.comparison)
   
@@ -209,11 +223,12 @@ mean.comp <- lapply(mean.comp, function(x) {
   x.new
   })
   
-  output[["mean.comparison"]] <- mean.comp
+return(mean.comp)
+  
+  }}
   
   
-  
-  if("ranking" %in% what) {
+if("ranking" %in% what) {
   # Extract ranking table #####
   if(grepl("Factor Mean Ranking Tables", b.string)) {
     
@@ -238,9 +253,10 @@ mean.comp <- lapply(mean.comp, function(x) {
   }
   }
   
-  if(any(c("summary", "comparisons") %in% what)) {
-  # Extract pairwise comparisons #####
-  
+# Extract pairwise comparisons #####
+   
+  if(any(c("summary") %in% what)) {
+
   # extract alignment part
   align.outp <- extractBetween("ALIGNMENT OUTPUT", "Average Invariance index", b.string)
   #separate intercepts/thresholds and loadings
@@ -554,3 +570,141 @@ if(estimator=="MLR") {
   
   invisible(output)
 }
+
+
+
+
+
+#' Extracts DIFF alignment results from Mplus output string
+#' @param input  Mplus output either as a single string or filename
+#' @param file Logical. If TRUE, `input` is treated as a filename.
+#' @details  Mplus input file has to include the 'align;' in the OUTPUT section and    'DIFF()' statements in the 'Model prior' section.
+#' @examples
+#' # b.string = readLines("fixed.out")
+#' # alf.out = getAlfDiff(b.string)
+#' @export
+getAlfDiff <- function(input, file = T) {
+  
+  if(file) {
+  if(!file.exists(input)) warning("File not found")
+  b.vector = readLines(input)
+  b.vector <- gsub("!.*", "", b.vector)
+  mplus.string <-  paste(b.vector, collapse="\n")
+  } else {
+    mplus.string <- input
+  }
+  
+  
+  al.string = strsplit(mplus.string, "ALIGNMENT OUTPUT")[[1]][[2]]
+  al.string = strsplit(al.string, "\n\n\n\n(^DIFF ANALYSIS FOR PARAMETERS)")[[1]][[1]]
+  
+  
+  al.string.sections = strsplit(al.string, "(DIFF ANALYSIS FOR PARAMETERS)")[[1]][-1]
+  length(al.string.sections)
+  
+outputs = lapply(al.string.sections, function(x)  {
+    
+    param.list = substr(x, 1,  regexpr( "Chi-square value", x)-1)
+    param.list <- gsub("\n|\\:", " ", param.list)
+    param.list <- unlist(strsplit(param.list, " "))
+    param.list <- param.list[!param.list==""]
+    
+    
+    chisq = as.numeric(trimws(sub(".*Chi-square value([^\n]*)\n.*", "\\1", x)))
+    chisq.df = as.numeric(trimws(sub(".*Degrees of freedom([^\n]*)\n.*", "\\1", x)))
+    chisq.p = as.numeric(trimws(sub(".*P-value([^\n]*)\n\n.*", "\\1", x)))
+    
+    
+    comp.tab1.ind = regexpr("Param\\s+Param\\s+Value\\s+Value", x)
+    comp.tab1.ind = c(comp.tab1.ind, 
+                      regexpr("\n\n", substr(x, comp.tab1.ind, nchar(x))))
+    comp.tab1 = substr(x, comp.tab1.ind[1], comp.tab1.ind[1]+comp.tab1.ind[2]-2)
+    
+    comp.tab1 = read.table(text=comp.tab1, stringsAsFactors = FALSE, header = T,
+                           strip.white = T,
+                           check.names = T)
+    
+    AVAIP = as.numeric(trimws(sub(".*Average Value Across Invariant Parameters\\:([^\n]*)\n.*", "\\1", x)))
+    
+    
+    
+    invar.param.list = extractBetween(
+      "Approximate Invariance Holds For\\:", 
+      "Average Value Across Invariant Parameters\\:", 
+      x)
+    invar.param.list <- gsub("\n|\\:", " ", invar.param.list)
+    invar.param.list <- unlist(strsplit(invar.param.list, " "))
+    invar.param.list <- invar.param.list[!invar.param.list==""]
+    
+    comp.tab2.ind = regexpr("Invariant Values, Difference to Average and Significance\n", x)
+    comp.tab2.ind = comp.tab2.ind + attr(comp.tab2.ind, "match.length")
+    comp.tab2.ind = c(comp.tab2.ind, 
+                      regexpr("\n\n", substr(x, comp.tab2.ind, nchar(x))))
+    comp.tab2 = substr(x, comp.tab2.ind[1], comp.tab2.ind[1]+comp.tab2.ind[2]-2)
+    
+    comp.tab2 = read.table(text=comp.tab2, stringsAsFactors = FALSE, header = T,
+                           strip.white = T,
+                           check.names = T)
+    
+    list(
+      param.list = param.list,
+      chisq = c(statistic = chisq,df = chisq.df,p.value = chisq.p),
+      comparison.table = comp.tab1,
+      Average.invariant.value = AVAIP,
+      invariant.param.list = invar.param.list,
+      compared.to.invar.value = comp.tab2
+    )
+    
+    
+   })
+
+
+
+summaries = lapply(outputs, function(x) data.frame(
+  al.pars = substr(paste(x$param.list, collapse=", "), 1, 20),
+  N_invariant = length(x$invariant.param.list),
+  N_noninvariant = length(x$param.list) - length(x$invariant.param.list),
+  Noninvariant.params = paste(setdiff(x$param.list, 
+                                          x$invariant.param.list), 
+                                  collapse=", "),
+  Chi.square = x$chisq[["statistic"]],
+  df = x$chisq[["df"]],
+  p.value = x$chisq[["p.value"]],
+  Average.invariant.value = x$Average.invariant.value)
+)
+
+summaries <- Reduce(rbind, summaries)
+msg = paste("ALF DIFF alignment estimated", sum(summaries$N_noninvariant), "out of",
+            sum(summaries$N_invariant), " parameters, which is ", 
+            scales::percent(sum(summaries$N_noninvariant)/sum(summaries$N_invariant)))
+
+list(outputs = outputs, 
+     summaries = summaries,
+     message = msg)
+ }
+ 
+
+ 
+
+
+# Basic extraction function  
+extractBetween <- function(begin, end, string) {
+  
+  if(gregexpr(begin, string)[[1]][[1]]==-1) {
+    message("Not found")
+    return(character(0))
+  } else {
+    
+    mapply(function(a, b) substr(string, a, b),
+           gregexpr(begin, string)[[1]]+nchar(begin),
+           gregexpr(end, string)[[1]]-1
+    )
+  }
+}
+
+
+  
+
+
+
+

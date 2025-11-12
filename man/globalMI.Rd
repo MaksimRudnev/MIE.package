@@ -17,18 +17,24 @@ globalMI(
 \arguments{
 \item{...}{Formula, group, and all the other eligible arguments of \code{\link[lavaan]{cfa}} function.}
 
-\item{chi.sq}{Logical, if chi-square should be reported.}
+\item{chi.sq}{Logical, if chi-square should be included in the model comparison table.}
 
 \item{omit}{Character (vector). Which model should be omitted. Possible values "configural", "metric", "scalar".}
 
 \item{what}{Character (vector) of fit measures to report (see \code{\link[lavaan]{fitMeasures}}}
 
-\item{partial}{List of parameters to release constraints, see `group.partial` of \code{\link[lavOptions]{cfa}}}
+\item{partial}{List of parameters to release constraints, see `group.partial`  \code{\link[lavaan]{lavOptions}}}
 
-\item{more}{More constraints, currently limited to `residuals` and `means`.}
+\item{more}{More models with extra constraints, currently limited to `residuals` and `means` which are added on the top of scalar model (or the most constrained otherwise, if 'scalar' is omitted)}
 
 \item{ho}{Currently defunct, for the higher-order factor models invariance see \code{\link[MIE]{globalMIH}}}
 }
+\value{
+A list with all the fitted models, an LRT test \code{\link[lavaan]{lavTestLRT}}, and a table of fit indices (`what`) and their differences across fitted models.
+}
 \description{
-Computes configural, metric, and scala invariance models and compares them.
+Computes a set of CFA models (e.g., configural, metric, and scalar/threshold invariance) and compares them to each other.
+}
+\details{
+If the model has ordered indicators, then instead of configural-metric-scalar it fits configural-threshold-scalar sequence of models.
 }
