@@ -1,6 +1,6 @@
 url: https://maksimrudnev.github.io/MIE.package/
 template:
-  bootstrap: 3
+  bootstrap: 5
 authors:
   Maksim Rudnev: ~
   href: https://maksimrudnev.com
@@ -21,6 +21,7 @@ reference:
   - runMImplus
   - runAlignment
   - runAlignmentSim
+  - extractMImplus
   - extractAlignment
   - extractAlignmentSim
   - extractBayesDiff

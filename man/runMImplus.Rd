@@ -26,6 +26,9 @@ runMImplus(
 
 \item{Mplus_com}{Sometimes you don't have a direct access to Mplus, so this argument specifies what to send to a system command line. Default value is "mplus".}
 }
+\value{
+A summary table with fit indices and their differences between models.
+}
 \description{
 Runs exact invariance tests in Mplus
 }
@@ -35,6 +38,6 @@ Runs exact invariance tests in Mplus
      "F1 BY F114 F115 F116 F117;
       F2 BY F118 F119  F120  F121 F122  F123;",
       group = "S003",
-      }
-
+      data = dd)
+}
 }

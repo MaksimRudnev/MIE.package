@@ -13,13 +13,12 @@
 #'      "F1 BY F114 F115 F116 F117;
 #'       F2 BY F118 F119  F120  F121 F122  F123;",
 #'       group = "S003",
-#'       }
-#' 
+#'       data = dd)
+#' }
+#' @return A summary table with fit indices and their differences between models.
 #' @export
 runMImplus <- function(model, group, data, categorical=NULL, filename = NULL, Mplus_com = "mplus") {
-  
-  
-  
+
   datfile = ifelse(is.null(filename), "mplus_temp.tab", paste0(filename, ".dat"))
   inpfile = ifelse(is.null(filename), "mplus_temp.inp", paste0(filename, ".inp"))
   outfile = ifelse(is.null(filename), "mplus_temp.out", paste0(filename, ".out"))
@@ -82,48 +81,58 @@ MODEL:\n", model),
   message("Run conventional MI test in Mplus.")
   trash <- system(paste(Mplus_com, inpfile))
   
-  #outfile="/Users/maksimrudnev/Dropbox/STAT/political efficacy/mplus_temp.out"
+  # SUMMARIZE  
+  extractMImplus(outfile)
   
-# SUMMARIZE  
-out <- paste(readLines(outfile), collapse = "\n")
+}
+
+#' Extract Mplus measurement invariance output
+#' @param outfile Character. Path to Mplus output file.
+#' @return A summary table with fit indices and their differences between models.
+#' @details
+#' Mplus output file has to contain results of measurement invariance testing, that is, block `ANALYSIS: model= configural metric scalar;`.
+#' 
+#' @export
+
+extractMImplus <- function(outfile) {
+  out <- paste(readLines(outfile), collapse = "\n")
   
-blocks = sub(".*Invariance Testing *(.*?) *MODEL RESULTS FOR.*", "\\1", out)
-
-#cat(blocks)
-
-blocks = strsplit(blocks, "MODEL FIT INFORMATION FOR THE ")[[1]]
-
- blks <- lapply(blocks[2:length(blocks)], function(block2) {
+  blocks = sub(".*Invariance Testing *(.*?) *MODEL RESULTS FOR.*", "\\1", out)
+  
+  #cat(blocks)
+  
+  blocks = strsplit(blocks, "MODEL FIT INFORMATION FOR THE ")[[1]]
+  
+  blks <- lapply(blocks[2:length(blocks)], function(block2) {
     
-      block2 = strsplit(block2, "\n")[[1]]
-      
-      rmsea = block2[which(block2=="RMSEA (Root Mean Square Error Of Approximation)")+2:4]
-      rmsea = Reduce("rbind", strsplit(rmsea, "\\s\\s+"))[,-1]
-      
-      cfitli = block2[which(block2=="CFI/TLI")+2:3]
-      cfitli = Reduce("rbind", strsplit(cfitli, "\\s\\s+"))[,c(2,3)]
-      
-      srmr = block2[which(block2=="SRMR (Standardized Root Mean Square Residual)")+2]
-      srmr = Reduce("rbind", strsplit(srmr, "\\s\\s+"))[-1]
-      
-      chisq = block2[which(block2=="Chi-Square Test of Model Fit")+2:4]
-      chisq = Reduce("rbind", strsplit(chisq, "\\s\\s+"))[,c(2,3)]
-      
-      list(rmsea=rmsea, cfitli=cfitli, srmr=srmr, chisq=chisq)
+    block2 = strsplit(block2, "\n")[[1]]
     
-    })
-
- 
-tb.out = sapply(blks, function(x) 
-            c(RMSEA=as.numeric(x$rmsea[x$rmsea[,1]=="Estimate",2]),
-                 CFI=as.numeric(x$cfitli[x$cfitli[,1]=="CFI",2]),
-                 SRMR=as.numeric(x$srmr[2])))
-colnames(tb.out)<-unname(sapply(blocks[-1],   function(x) strsplit(x, "\n")[[1]][1]))
-tb.out = cbind(tb.out,
-  diff=as.matrix(apply(tb.out, 1, function(x) ifelse(length(x)==2, x[1]-x[2], c(x[1]-x[2], x[2]-x[3])))))
-
-tb.out
-
+    rmsea = block2[which(block2=="RMSEA (Root Mean Square Error Of Approximation)")+2:4]
+    rmsea = Reduce("rbind", strsplit(rmsea, "\\s\\s+"))[,-1]
+    
+    cfitli = block2[which(block2=="CFI/TLI")+2:3]
+    cfitli = Reduce("rbind", strsplit(cfitli, "\\s\\s+"))[,c(2,3)]
+    
+    srmr = block2[which(block2=="SRMR (Standardized Root Mean Square Residual)")+2]
+    srmr = Reduce("rbind", strsplit(srmr, "\\s\\s+"))[-1]
+    
+    chisq = block2[which(block2=="Chi-Square Test of Model Fit")+2:4]
+    chisq = Reduce("rbind", strsplit(chisq, "\\s\\s+"))[,c(2,3)]
+    
+    list(rmsea=rmsea, cfitli=cfitli, srmr=srmr, chisq=chisq)
+    
+  })
+  
+  
+  tb.out = sapply(blks, function(x) 
+    c(RMSEA=as.numeric(x$rmsea[x$rmsea[,1]=="Estimate",2]),
+      CFI=as.numeric(x$cfitli[x$cfitli[,1]=="CFI",2]),
+      SRMR=as.numeric(x$srmr[2])))
+  colnames(tb.out)<-unname(sapply(blocks[-1],   function(x) strsplit(x, "\n")[[1]][1]))
+  tb.out = cbind(tb.out,
+                 diff=as.matrix(apply(tb.out, 1, function(x) ifelse(length(x)==2, x[1]-x[2], c(x[1]-x[2], x[2]-x[3])))))
+  
+  tb.out
 }
 
 
