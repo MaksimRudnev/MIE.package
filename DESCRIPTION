@@ -17,7 +17,5 @@ LazyData: true
 RoxygenNote: 7.3.2
 URL: https://maksimrudnev.github.io/MIE.package/
 VignetteBuilder: quarto
-Suggests: 
-    quarto, 
-    LittleHelpers
+Suggests: quarto
 Config/Needs/website: quarto
