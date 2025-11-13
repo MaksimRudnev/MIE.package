@@ -35,7 +35,6 @@ jobs:
         env:
            R_QUARTO_QUIET: FALSE
         with:
-          extra-packages: any::pkgdown, local::.
           extra-packages: any::pkgdown, quarto=quarto-dev/quarto-r@libpaths, local::.
           needs: website
 
