@@ -184,8 +184,8 @@ Let's see how MIE works with our simulated data. We need to pick the measure, ca
 
 
 corrs <- getMetrics(
-  sim_data, 
-  "group", 
+  group = "group", 
+  data = sim_data, 
   metric = "correlation")
 
 plotDistances(corrs)
@@ -199,8 +199,8 @@ plotDistances(corrs)
 all_loadings <- getMetrics(
   model = 'F1 =~ v1  + v2  + v3  + v4;
            F2 =~ v11 + v12 + v13 + v14;',
-  sim_data,
-  group = "group",
+  group = "group", 
+  data = sim_data, 
   metric = "parameters",
   parameters = "loadings"
 )
@@ -255,7 +255,7 @@ stratifiedMI(
   model = 'F1 =~ v1  + v2  + v3  + v4;
            F2 =~ v11 + v12 + v13 + v14;',  
   group = "group", 
-  data = sim_data,
+  data = sim_data, 
   strata = list("East_Asia" = c("East_Asia_G1", "East_Asia_G2", "East_Asia_G3", "East_Asia_G4", "East_Asia_G5"), 
                 "Eastern_Europe" = c("Eastern_Europe_G1", "Eastern_Europe_G2", "Eastern_Europe_G3", "Eastern_Europe_G4", "Eastern_Europe_G5"), 
                 "Latin_America" = c("Latin_America_G1", "Latin_America_G2", "Latin_America_G3", "Latin_America_G4", "Latin_America_G5"), 

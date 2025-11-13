@@ -1,3 +1,5 @@
+home:
+  title: MIE -- Measurement invariance explorer (R package)
 url: https://maksimrudnev.github.io/MIE.package/
 template:
   bootstrap: 5

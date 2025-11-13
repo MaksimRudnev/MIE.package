@@ -1,9 +1,6 @@
-# MIE -- <a href="https://maksimrudnev.github.io/MIE.package/"><img src="man/figures/logo.png" align="right" height="120" alt="MIE website" /></a>
+# MIE -- Measurement invariance explorer <a href="https://maksimrudnev.github.io/MIE.package/"><img src="man/figures/logo.png" align="right" height="120" alt="MIE website" /></a>
 
-# Measurement invariance explorer (R package)
-
- To install, type in the RStudio console: `devtools::install_github("maksimrudnev/MIE.package", dependencies = TRUE)`
-
+To install, type in the RStudio console: `devtools::install_github("maksimrudnev/MIE.package", dependencies = TRUE)`
 
 Invariance explorer helps to find groups that might demonstrate measurement invariance of latent factors.
 Instead of repeatedly running the models to test invariance, one may plot the group measures and visually select the ones that are closer to each other.
