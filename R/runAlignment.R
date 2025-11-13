@@ -27,17 +27,19 @@
 #' 
 #' All the files created during these steps stay on the disk and can be used independently for reporting. For a detailed tutorial on alignment in general see \url{https://maksimrudnev.com/2019/05/01/alignment-tutorial/}
 #' 
+#' @seealso \code{\link[MIE]{extractAlignment}}, \code{\link[MIE]{extractAlignmentSim}}, \code{\link[MIE]{extractAlignmentSim}}, \code{\link[MIE]{measurementInvarianceMplus}}
 #' 
 #' @examples 
-#' \dontrun{ aling.res = runAlignment(model = "Moral1 BY prostit homosex abortion divorce;
-#' Moral2 BY benefits taxes bribes;", 
-#' group = "country",
-#'  dat = wvs.s1,
-#'  Mplus_com = "mplus",
-#'  summaries = T
+#' \dontrun{ 
+#' aling.res = runAlignment(
+#'  model = "Moral1 BY prostit homosex abortion divorce;
+#'    Moral2 BY benefits taxes bribes;", 
+#'    group = "country",
+#'    dat = wvs.s1,
+#'    Mplus_com = "mplus",
+#'    summaries = T
 #'  )
 #'  }
-#'  @seealso \code{\link[MIE]{extractAlignment}}, \code{\link[MIE]{extractAlignmentSim}}, \code{\link[MIE]{extractAlignmentSim}}, \code{\link[MIE]{measurementInvarianceMplus}}
 #'  
 #' @export
 runAlignment <- function(
@@ -242,14 +244,14 @@ runAlignment <- function(
                    free = extractAlignment("free.out", silent = TRUE),
                    simulations = extractAlignmentSim(sapply(sim.samples, function(x) paste0("sim", x, ".out")), silent = TRUE)
       )
-      cat("\n", "⎯⎯⎯⎯⎯⎯⎯⎯⎯ ", "Results of Free alignemnt", rep("⎯", getOption("width", 80)-20),  "\n", sep="")
-      print(otpt$free$summary)
-      
-      cat("\n", "⎯⎯⎯⎯⎯⎯⎯⎯⎯ ", "Results of Fixed alignemnt", rep("⎯", getOption("width", 80)-20),  "\n", sep="") 
-      print(otpt$fixed$summary)
-      
-      cat("\n", "⎯⎯⎯⎯⎯⎯⎯⎯⎯ ", "Results of simulations", rep("⎯", getOption("width", 80)-20),  "\n", sep="") 
-      print(otpt$simulations)
+      # cat("\n", "⎯⎯⎯⎯⎯⎯⎯⎯⎯ ", "Results of Free alignemnt", rep("⎯", getOption("width", 80)-20),  "\n", sep="")
+      # print(otpt$free$summary)
+      # 
+      # cat("\n", "⎯⎯⎯⎯⎯⎯⎯⎯⎯ ", "Results of Fixed alignemnt", rep("⎯", getOption("width", 80)-20),  "\n", sep="") 
+      # print(otpt$fixed$summary)
+      # 
+      # cat("\n", "⎯⎯⎯⎯⎯⎯⎯⎯⎯ ", "Results of simulations", rep("⎯", getOption("width", 80)-20),  "\n", sep="") 
+      # print(otpt$simulations)
       
       
       
@@ -258,11 +260,11 @@ runAlignment <- function(
                    free =  extractAlignment("free.out", silent = TRUE))
       
       
-      cat("\n", "⎯⎯⎯⎯⎯⎯⎯⎯⎯ ", "Results of Free alignemnt", rep("⎯", getOption("width", 80)-20),  "\n", sep="")
-      print(otpt$free$summary)
-      
-      cat("\n", "⎯⎯⎯⎯⎯⎯⎯⎯⎯ ", "Results of Fixed alignemnt", rep("⎯", getOption("width", 80)-20),  "\n", sep="") 
-      print(otpt$fixed$summary)
+      # cat("\n", "⎯⎯⎯⎯⎯⎯⎯⎯⎯ ", "Results of Free alignemnt", rep("⎯", getOption("width", 80)-20),  "\n", sep="")
+      # print(otpt$free$summary)
+      # 
+      # cat("\n", "⎯⎯⎯⎯⎯⎯⎯⎯⎯ ", "Results of Fixed alignemnt", rep("⎯", getOption("width", 80)-20),  "\n", sep="") 
+      # print(otpt$fixed$summary)
       
       
     }

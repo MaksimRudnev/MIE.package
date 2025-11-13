@@ -63,14 +63,18 @@ The sequence of free, fixed alignment and simulations follows recommendations of
 All the files created during these steps stay on the disk and can be used independently for reporting. For a detailed tutorial on alignment in general see \url{https://maksimrudnev.com/2019/05/01/alignment-tutorial/}
 }
 \examples{
-\dontrun{ aling.res = runAlignment(model = "Moral1 BY prostit homosex abortion divorce;
-Moral2 BY benefits taxes bribes;", 
-group = "country",
- dat = wvs.s1,
- Mplus_com = "mplus",
- summaries = T
+\dontrun{ 
+aling.res = runAlignment(
+ model = "Moral1 BY prostit homosex abortion divorce;
+   Moral2 BY benefits taxes bribes;", 
+   group = "country",
+   dat = wvs.s1,
+   Mplus_com = "mplus",
+   summaries = T
  )
  }
- @seealso \code{\link[MIE]{extractAlignment}}, \code{\link[MIE]{extractAlignmentSim}}, \code{\link[MIE]{extractAlignmentSim}}, \code{\link[MIE]{measurementInvarianceMplus}}
  
+}
+\seealso{
+\code{\link[MIE]{extractAlignment}}, \code{\link[MIE]{extractAlignmentSim}}, \code{\link[MIE]{extractAlignmentSim}}, \code{\link[MIE]{measurementInvarianceMplus}}
 }

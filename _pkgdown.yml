@@ -4,4 +4,41 @@ template:
 authors:
   Maksim Rudnev: ~
   href: https://maksimrudnev.com
+reference:
+- title: Get distances in terms of measurement invariance
+  desc: 'The main functions here are getMetrics() and plotDistances(), the others are referred to internally.'
+  contents:
+  - getMetrics
+  - plotDistances
+  - computeCorrelation
+  - computeCovariance
+  - incrementalFit
+  - mgcfaParameters
+  - pairwiseFit
+- title: Facilitate running and extracting MI-related functionality of Mplus
+  desc: '`run` function run Mplus, `extract` functions extract parts of Mplus output files.'
+  contents:
+  - runMImplus
+  - runAlignment
+  - runAlignmentSim
+  - extractAlignment
+  - extractAlignmentSim
+  - extractBayesDiff
+  - extractAlfDiff
+- title: General MI-related functions
+  desc: 'Automates common tasks in lavaan-based MI analyses. Also facilitates stratified MI and groupwise CFAs'
+  contents:
+  - globalMI
+  - globalMIH
+  - groupwiseCFA
+  - gsumCFA
+  - stratifiedMI
+- title: MIE Shiny app
+  contents:
+  - runMIE
+- title: Convenience functions
+  contents:
+  - lavTestScore_clean
+  - nInvariant
+  - mgcfaDiagnose
 

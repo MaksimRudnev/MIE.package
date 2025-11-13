@@ -6,3 +6,8 @@ papers
 rsconnect
 unnecessary/*
 .gitignore
+tests
+TODO
+MIE.Rproj
+docs
+**/.quarto/

@@ -3,12 +3,12 @@
 #' @param file filename of the Mplus alignment output file
 #' @examples
 #' \dontrun{  
-#'    align.summ <- extractDiffOutput("BSEM_prior01.out") 
+#'    align.summ <- extractBayesDiff("BSEM_prior01.out") 
 #'    }
 #' @return A summary table and a parsed difference outpout to data frame.
 #' @seealso \code{\link[MIE]{extractAlignment}}  and \code{\link[MIE]{extractAlignmentSim}} 
 #' @export
-extractDiffOutput <- function(file) {
+extractBayesDiff <- function(file) {
   
   str.bdiff <- paste(readLines(file),
                      collapse = "\n")

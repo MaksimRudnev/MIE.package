@@ -4,7 +4,7 @@
 \alias{incrementalFit}
 \title{Run pairwise models and compute decrease in fit}
 \usage{
-incrementalFit(..., level = "metric")
+incrementalFit(..., level = "metric", quiet = FALSE)
 }
 \arguments{
 \item{...}{The arguments passed to \code{\link[MIE]{pairwiseFit}}. Required arguments are \code{'model'}, \code{'data'}, and \code{'group'}.}
@@ -16,8 +16,9 @@ incrementalFit(..., level = "metric")
 \item{at.once}{between configural and scalar models.}
 \item{intercepts.first}{between configural and model with equal intercepts/thresholds, but free loadings (Wu & Estabrook, 2017's step one). Appropriate when all the indicators are ordlinal.}
 \item{intercepts.scalar}{between a model with equal intercepts/thresholds, but free loadings and a full scalar model (Wu & Estabrook, 2017's step two). Appropriate when all the indicators are ordlinal.}
-
 }}
+
+\item{quiet}{Logical. If TRUE, suppresses the output messages.}
 }
 \value{
 Returns a list with detailed output on every available fit index, and a large matrix used for plotting with \code{\link[MIE]{plotDistances}}

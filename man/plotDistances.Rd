@@ -2,33 +2,39 @@
 % Please edit documentation in R/server.functions.R
 \name{plotDistances}
 \alias{plotDistances}
-\title{Plot distances using computed measures of distance}
+\title{Plot distances using computed metrics of distance}
 \usage{
 plotDistances(
-  measures,
-  n.clusters = "auto",
+  metrics,
   fit.index = "cfi",
+  n.clusters = "auto",
   drop = NULL,
   dist.method = NULL,
+  cutoff = FALSE,
+  weighted = TRUE,
   shiny = FALSE
 )
 }
 \arguments{
-\item{measures}{Can be result of `MGCFAparameters`, `computeCovariance`, `computeCorrelation`, `incrementalFit`.}
+\item{metrics}{Should be a result of \code{\link[MIE]{getMetrics}}}
+
+\item{fit.index}{Index to be used to in represneting measurement invariance distances. Only if the `metrics` argument is a `fit` metric. Can be anything returned by `lavaan::fitMeasures`}
 
 \item{n.clusters}{Number of clusters.}
-
-\item{fit.index}{Index to be used to in represneting measurement invariance distances. Only if the `measures` argument is an output of `incrementalFit`. Can be anything returned by `lavaan::fitMeasures`}
 
 \item{drop}{Vector of group names to be dropped from the plot.}
 
 \item{dist.method}{Method to compute distances.}
+
+\item{cutoff}{Either logical or numeric. If FALSE (default), plots network based on pairwise comparisons based on a cutoff value. If TRUE, cutoff value is .01. If numeric, it is a custom cutoff value used to plot the edges between groups. If not FALSE, n.clusters and dist.method are ignored.}
+
+\item{weighted}{Logical. If weighted graph should be created accounting for the size of fit increment. See \code{\link[igraph]{graph_from_adjacency_matrix}} for details}
 }
 \value{
 Computes distances and performs multidimensional scaling (two-dimensional projection). Returns ggplot-based plot.
 }
 \description{
-Plot distances using computed measures of distance
+Plot distances using computed metrics of distance
 }
 \seealso{
 \code{\link{plotCutoff}}

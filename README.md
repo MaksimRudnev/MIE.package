@@ -1,4 +1,6 @@
-# MIE - Measurement invariance explorer (R package)
+# MIE -- <a href="https://maksimrudnev.github.io/MIE.package/"><img src="man/figures/logo.png" align="right" height="120" alt="MIE website" /></a>
+
+# Measurement invariance explorer (R package)
 
  To install, type in the RStudio console: `devtools::install_github("maksimrudnev/MIE.package", dependencies = TRUE)`
 
@@ -27,79 +29,14 @@ When using fit indices as a measure of group proximity, ```Measurement invarianc
 * With big datasets and complex models lavaan could take _a considerable amount of time_ to get computations done. Be patient.
 * One feature to be implemented is survey weights.
 
-### Starting
-
-To start, install the `MIE` package and run `runMIE()` function.
-
-### Input data
-
-Using arguments of function `runMIE()` it is possible to feed the app with the data objects stored in your R memory. For example:
-```
-runMIE("F =~ impfree + iphlppl + ipsuces + ipstrgv", ess[, 4:15], group = "country")
-```
-
-Limit the data to the variables used in the models, because the app will attempt to compute covariance and correlation using all the variables except for group variable.
-
-
-#### Uploading data within Shiny app
-
-First column should include a group identifier, all the other columns should include indicators. Covariances are computed for all the indicators. When a model is implied, the data file might include any number of variables. However, it is recommended to keep file shorter to enhance a computation time. For example:
-
-<img src="inst/application/screenshot.png" alt="data" style="width: 300px;"/>
-
-Here's a sample code to create data for the app in R from the data.frame:
-
-```
-write.csv(mydata[,c("country", "v1", "v2", "v3", "v4", "v5", "v6")], "fileforMIE.csv", row.names = F)
-```
-
 ### Main purpose
-This app is very useful when there are either clusters of groups or outlier groups (in terms of implied model/correlations).
-The app is not very suitable for finding model misspecifications.
+This package is  useful when there are either clusters of groups or outlier groups (in terms of implied model/correlations). This approach is not very suitable for finding model misspecifications.
 
 ### Sister methods - mixture
 
 For the more sophisticated model-based clustering see https://ppw.kuleuven.be/okp/_pdf/DeRoover2017MSFAF.pdf
-However this method is limited to differences in factor loadings only, does not provide information on specific between-group distances, and is heavly dependent on a single model fit index (BIC). In practive this method is available only with proprietary software.
+However this method is limited to differences in factor loadings only, does not provide information on specific between-group distances, and is heavly dependent on a single model fit index (BIC). In practice, this method is available only with proprietary software.
 
 Another method was suggested by [Cheung & Rensvold (2000)](https://doi.org/10.5465/apbpp.2000.5535968), but it occured to be of little use.
 
-<!---
-## Technical manual #######
 
-##### Storages ######
-`dt` stores `dat` - the data read from external file, and `model` formula entered by user. It is updated every time data or model formula is entered, and sends its new values to all the functions that use it.
-
-`vals` stores `keeprows` object - a vector containing subset of groups before and after including and excluding; and `excluded` vector of group names that are currently excluded from the graph and computations.
-
-`modelStorage` stores results of the computed models in order to avoid repitition of computations (and save user's time).
-
-##### Reactive objects #####
-`selectedData` is used to subset the data. It reacts to changes in storage `dt$dat` and `vals$keeprows` and returns an object `selectedData()` containing subset of the data.
-
-
-##### Listeners #####
-Model fitting is done by functions in `observeEvent(input$measure`): depending on the selection of measure, it computes either covariance matrix, MGCFA configural model (and extracts factor loadings), MGCFA metric model (extracting intercepts), pairwise configural and metric MGCFA, or metric and scalar MGCFA (extracting difference in model fit indices).
-
-
-# Bugs and further developments
-
-Overall MGCFA is refitted each time the group is removed. Works properly only when Options is clicked.
-
-The circle should be circle, fix the coord_equal everywhere. Now can be fixed with + and - tools.
-
-
-Implicate effect sizes following :
-
-
-Nye, C. D., Bradburn, J., Olenick, J., Bialko, C., & Drasgow, F. (2018). How Big Are My Effects? Examining the Magnitude of Effect Sizes in Studies of Measurement Equivalence. Organizational Research Methods, 1094428118761122. https://doi.org/10.1177/1094428118761122
-
-Nye, C. D., & Drasgow, F. (2011). Effect size indices for analyses of measurement equivalence: Understanding the practical importance of differences between groups. Journal of Applied Psychology, 96(5), 966–980. https://doi.org/10.1037/a0022955
-
-Gunn, H. J., Grimm, K. J., & Edwards, M. C. (2019). Evaluation of Six Effect Size Measures of Measurement Non-Invariance for Continuous Outcomes. Structural Equation Modeling: A Multidisciplinary Journal, 1-12. https://doi.org/10.1080/10705511.2019.1689507
-
-
-
-Millsap, R. E., & Olivera-Aguilar, M. (2012). Investigating measurement invariance using confirmatory factor analysis. In R. H. Hoyle (Ed.), Handbook of structural equation modeling (pp. 380–392). New York, NY: Guilford. (implemented but poorly documented in semTools' partial invariance http://cran.irsn.fr/web/packages/semTools/vignettes/partialInvariance.pdf)
-
--->

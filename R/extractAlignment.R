@@ -21,19 +21,19 @@ extractAlignment <-  function(file = "fixed.out",
   
  
 
-  # Read file
+  ## Read file ####
   b.vector = readLines(file)
   b.vector <- gsub("!.*", "", b.vector)
   b.string <-  paste(b.vector, collapse="\n")
  
-  
-  # Extract estimator
-  sum.of.analysis.s <-  extractBetween( "SUMMARY OF ANALYSIS",  "Input data format  ", b.string)
+  ## Summaries #####
+  ### Extract estimator ####
+  sum.of.analysis.s <-  MIE:::extractBetween( "SUMMARY OF ANALYSIS",  "Input data format  ", b.string)
   sum.of.analysis.s <-  strsplit(sum.of.analysis.s,"\n")[[1]]
   estimator <- sum.of.analysis.s[grep("Estimator", sum.of.analysis.s)]
   estimator <- sub("^(Estimator)\\s*", "", estimator)
   
-  # TYPE of analysis
+  ### TYPE of analysis ####
    analysis.section <- sub(".*ANALYSIS\\s*(.*?) *MODEL.*", "\\1", b.string, ignore.case = T)
    
    type.analysis.s <-  strsplit(analysis.section,"\n")[[1]]
@@ -42,30 +42,40 @@ extractAlignment <-  function(file = "fixed.out",
                           gsub(";|(type)|=|\\s*", "", type.analysis, ignore.case = T),
                       "MG")
    
-   # groupung variable
-   if(type.analysis=="MG") {
-   grp.var = trimws(gsub("Grouping variable", "", sum.of.analysis.s[grep("Grouping variable", sum.of.analysis.s, ignore.case = T)]))
+   if(!toupper(type.analysis) %in% c("MG", "MIXTURE")) {
+     warning("Can't detect the type of analysis (MG or Mixture). Assuming MG.")
+     type.analysis = "MG"
    }
    
+   ### groupung variable ####
+   if(type.analysis=="MG") {
+   grp.var = trimws(gsub("Grouping variable", "", sum.of.analysis.s[grep("Grouping variable", sum.of.analysis.s, ignore.case = T)]))
+   }else {
+     
+     grp.var = unlist(strsplit(
+       strsplit(gsub("\\d|\\=\\s+|c\\(|\\)","", gsub(".*knownclass(.*?);.*", "\\1", b.string)), "\n")[[1]], 
+       "\\s"))
+     grp.var = grp.var[grp.var!=""]
+     grp.var = grp.var[[1]]
+   }
    
+   ### has categorical ####
    variable.section = sub(".*VARIABLE:\\s*(.*?) *:.*", "\\1", b.string, ignore.case = T)
-   
    has.categorical.vars = grepl("categorical", variable.section, ignore.case = T)
   
-  # Version of Mplus
- mplus.version <-  MIE:::MplusVersion(out.string = b.string) 
+  ### version of Mplus ####
+  mplus.version <-  MIE:::MplusVersion(out.string = b.string) 
 
- if(!mplus.version %in% c("8.8", "8.9", "8.10", "8.11"))
-   warning("Currently supported Mplus versions include 8.8-8.11, others are not officially supported, but still trying to extract summaries") 
+ if(!mplus.version %in% c("8.8", "8.9", "8.10", "8.11", "9"))
+   warning("Currently supported Mplus versions include 8.8-8.11 and 9.0, others are not officially supported, but still trying to extract summaries") 
  
  
-  # Var list
+ ### variable list #####
  names.begin.index = gregexpr("names", b.string, ignore.case = T)[[1]]
  names.end.index = gregexpr(";", b.string, ignore.case = T)
  names.end.index <- names.end.index[[1]][names.end.index[[1]] > names.begin.index][[1]]
  string.varnames = substr(b.string, names.begin.index + attr(names.begin.index, "match.length"), names.end.index-1)
  
-  
 
   expand.varlist <- function(string.varnames) {
     
@@ -101,7 +111,7 @@ extractAlignment <-  function(file = "fixed.out",
   var.list = expand.varlist(string.varnames)
   
   
-  # usevariables
+  ####  usevariables ####
   names.begin.index = gregexpr("USEVARIABLES", b.string, ignore.case = T)[[1]]
   names.end.index = gregexpr(";", b.string, ignore.case = T)
   names.end.index <- names.end.index[[1]][names.end.index[[1]] > names.begin.index][[1]]
@@ -128,7 +138,7 @@ if(is.matrix(used.vars.list)) {
   
 } 
   
-  
+  # parse categorical vars
   if(has.categorical.vars) {
     
     categorical.var.string = sub(".*categorical\\s*(.*?) *;.*", "\\1", 
@@ -149,38 +159,34 @@ if(is.matrix(used.vars.list)) {
   
  
   
-  # Parameterization
+  ### Parameterization ####
   parameterization = ifelse(any(grepl("Parameterization", sum.of.analysis.s)),
                             trimws(gsub("Parameterization" ,"",sum.of.analysis.s[grepl("Parameterization", sum.of.analysis.s)])),
                             NA)
 
 
   
-  # output list to be filled
-  output <- list()
-  if("comparisons" %in% what) {
-    output[["mean.comparison"]] <- extractAlignedMeans(b.string)
-  }
-    
+
+  
   # Extract mean comparison ######
   extractAlignedMeans <- function(string) {
 
-  if(!mplus.version %in% c("8.9", "8.10", "8.11") & 
+  if(!mplus.version %in% c("8.9", "8.10", "8.11", "9") & 
      estimator!="BAYES") {
     
-    mean.comparison <- extractBetween(
+    mean.comparison <- MIE:::extractBetween(
       "FACTOR MEAN/INTERCEPT COMPARISON AT THE 5% SIGNIFICANCE LEVEL IN DESCENDING ORDER", 
       "\n\n\n\n\n", b.string)
     
   } else if(mplus.version %in% c("8.9", "8.10", "8.11") & estimator!="BAYES" ) {
     
-    mean.comparison <- extractBetween(
+    mean.comparison <- MIE:::extractBetween(
       "FACTOR INTERCEPT COMPARISON AT THE 5% SIGNIFICANCE LEVEL IN DESCENDING ORDER", 
       "\n\n\n\n\n", b.string)
     
    } else {
     
-    mean.comparison <- extractBetween(
+    mean.comparison <- MIE:::extractBetween(
       "FACTOR MEAN COMPARISON AT THE 5% SIGNIFICANCE LEVEL IN DESCENDING ORDER", 
       
       "\n\n\n\n\n", b.string)
@@ -227,7 +233,15 @@ return(mean.comp)
   
   }}
   
+  mean.comp = extractAlignedMeans(b.string)
+
+  # output list to be filled
+  output <- list()
+  if("comparisons" %in% what) {
+    output[["mean.comparison"]] <- mean.comp #extractAlignedMeans(b.string)
+  }
   
+## Extract ranking ####
 if("ranking" %in% what) {
   # Extract ranking table #####
   if(grepl("Factor Mean Ranking Tables", b.string)) {
@@ -253,28 +267,29 @@ if("ranking" %in% what) {
   }
   }
   
-# Extract pairwise comparisons #####
+## Extract pairwise comparisons ####
    
   if(any(c("summary") %in% what)) {
 
   # extract alignment part
-  align.outp <- extractBetween("ALIGNMENT OUTPUT", "Average Invariance index", b.string)
+  align.outp <- MIE:::extractBetween("ALIGNMENT OUTPUT", "Average Invariance", b.string)
   #separate intercepts/thresholds and loadings
   
   # correction for version 8.10
-  align.outp <- gsub("Approximate Invariance Was Not Found For This Parameter.", 
-       "Approximate Measurement Invariance Holds For Groups:", align.outp)
+  align.outp <- gsub(
+    "Approximate Invariance Was Not Found For This Parameter.", 
+    "Approximate Measurement Invariance Holds For Groups:", align.outp)
 
-  if(mplus.version %in% c("8.8", "8.9", "8.10", "8.11") & estimator!="BAYES") { 
+  if(mplus.version %in% c("8.8", "8.9", "8.10", "8.11", "9") & estimator!="BAYES") { 
     
       align.outp1 <- strsplit(align.outp, "\n\n\n Loadings for ", fixed=T)[[1]]
-     
-      
+    
       # intercepts.thresholds.comparison
       al.i.th <- align.outp1[[1]]
       al.i.th <- sub("\n\nINVARIANCE ANALYSIS\n\n Intercepts/Thresholds\n ", " ",  al.i.th)
       al.pw.i <- strsplit(al.i.th, "(Intercept for )|(Threshold )")[[1]]
     
+      # loadings
       al.loads <-align.outp1[-1]
       names(al.loads)<-names(mean.comp)
       al.loads <-lapply(seq_along(al.loads), 
@@ -297,6 +312,7 @@ if("ranking" %in% what) {
       
   } else {
     
+
   align.outp <- strsplit(align.outp, "Loadings\n")[[1]]
   align.outp <- sub("\n\nINVARIANCE ANALYSIS\n\n Intercepts/Thresholds\n ", " ", align.outp)
   align.outp <- sub("\n\nINVARIANCE ANALYSIS\n\n Intercepts\n ", " ", align.outp)
@@ -333,9 +349,11 @@ if(estimator=="MLR") {
                   "Approximate Measurement Invariance Holds For Groups:", 
                   al.pw)
   }
+  
   al.pw.list <-strsplit(al.pw, " Approximate Measurement Invariance Holds For Groups:")
   
   names(al.pw.list)<- al.pw.names
+  
   
   align.outp <- lapply(setNames(nm=al.pw.names), function(x) { 
     #print(x)
@@ -344,6 +362,7 @@ if(estimator=="MLR") {
     
     
     pairwise.tab <- read.table(text=x[1], stringsAsFactors = FALSE, skip=2)
+    
     if(estimator=="BAYES") {
       colnames(pairwise.tab) <- c("Group1", "Group2", "Est_in_G1", "Est_in_G2", "Difference", "SE", "P_value",
                                   "lowerCI", "upperCI")
@@ -388,7 +407,6 @@ if(estimator=="MLR") {
       "Invariant groups" = invariant.groups,
       "Non-invariant groups" = non.invariant.groups
     )
-    
   })
 
   output[["alignment.output"]] <- align.outp
@@ -412,7 +430,7 @@ if(estimator=="MLR") {
   
   
   
-  # Extract summaries: R2, aligned parameters, list of invariant and non-invariant groups #####
+  # Combine summaries: R2, aligned parameters, list of invariant and non-invariant groups #####
   
   summ <- 
     lapply(align.outp, function(x)  data.frame(AlignedParameter = x[["Aligned parameter"]],
@@ -428,10 +446,11 @@ if(estimator=="MLR") {
   output[["summary"]] <- summ1
   
   
+  
   # Fit contribution ######
   if(estimator %in% c("MLR", "ML") & "contributions" %in% what) {
     
-    if(grepl("TECHNICAL 8 OUTPUT", b.string))  {
+    if(grepl("Average Invariance index", b.string))  {
       
       tech8 <-  substr(b.string, regexpr("TECHNICAL 8 OUTPUT", b.string), nchar(b.string))
       tech8 <-  sub("TECHNICAL 8 OUTPUT\n\n\n", "", tech8)
@@ -583,7 +602,7 @@ if(estimator=="MLR") {
 #' # b.string = readLines("fixed.out")
 #' # alf.out = getAlfDiff(b.string)
 #' @export
-getAlfDiff <- function(input, file = T) {
+extractAlfDiff <- function(input, file = T) {
   
   if(file) {
   if(!file.exists(input)) warning("File not found")
@@ -628,7 +647,7 @@ outputs = lapply(al.string.sections, function(x)  {
     
     
     
-    invar.param.list = extractBetween(
+    invar.param.list = MIE:::extractBetween(
       "Approximate Invariance Holds For\\:", 
       "Average Value Across Invariant Parameters\\:", 
       x)

@@ -11,7 +11,8 @@ globalMI(
   what = c("cfi", "tli", "rmsea", "srmr", "chisq"),
   partial = NULL,
   more = NULL,
-  ho = F
+  ho = F,
+  quiet = FALSE
 )
 }
 \arguments{
@@ -28,6 +29,8 @@ globalMI(
 \item{more}{More models with extra constraints, currently limited to `residuals` and `means` which are added on the top of scalar model (or the most constrained otherwise, if 'scalar' is omitted)}
 
 \item{ho}{Currently defunct, for the higher-order factor models invariance see \code{\link[MIE]{globalMIH}}}
+
+\item{quiet}{Logical, if the results should be printed.}
 }
 \value{
 A list with all the fitted models, an LRT test \code{\link[lavaan]{lavTestLRT}}, and a table of fit indices (`what`) and their differences across fitted models.

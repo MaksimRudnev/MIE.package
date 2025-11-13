@@ -4,7 +4,7 @@
 #' @param data The data
 #' @param group Character. Grouping variable.
 #' @param out Legacy argument, keeps only `fit` or `models` parts of the model.
-#' @param what Fit indices to print and return. Possible values are any fit measures retruend by `fitmeasures()`, a special value `mod` adds a parameter with the largest modification index and its MI value.
+#' @param what Fit indices to print and return. Possible values are any fit measures returned by `fitmeasures()`, a special value `mod` adds a parameter with the largest modification index and its MI value.
 #' @param ... Other arguments passed to lavaan::cfa
 #'
 #' @export
@@ -319,7 +319,7 @@ lavTestScore_clean <- function(lavaan.fit,  ...) {
 #'
 #' @export
 
-mgcfa_diagnose <- function(lavaan.model, output=c("overall", "neg.var", "mi")) {
+mgcfaDiagnose <- function(lavaan.model, output=c("overall", "neg.var", "mi")) {
   require(magrittr)
   if("overall" %in% output) {
     # Print general info
@@ -411,9 +411,8 @@ mgcfa_diagnose <- function(lavaan.model, output=c("overall", "neg.var", "mi")) {
 #'
 #' @returns  Returns a data frame with two columns: group name and the number of groups with invariant parameters.
 #'
-#' @export
-
-n_invariant <- function(fit, sort=F, fit.index="cfi", cutoff=.01, drop=NA) {
+#' @noRd
+nInvariant_ <- function(fit, sort=F, fit.index="cfi", cutoff=.01, drop=NA) {
   
   a=cbind(attr(fit$bunch,"pairs.of.groups"), fit$detailed[[fit.index]])
   if(!is.na(drop)) a = a[!( a$V1 %in% drop |  a$V2 %in% drop),]
@@ -429,15 +428,24 @@ n_invariant <- function(fit, sort=F, fit.index="cfi", cutoff=.01, drop=NA) {
 }
 
 
-#' Get the tree of 
-#' @param ... See \code{\link{n_invariant}} except `sort` and `drop` arguments.
-#' @returns  Returns a data frame with N-1 columns, where N is number of groups.
-#' @details Runs \code{\link{n_invariant}} iteratively, by dropping the least invariant group at each iteration until there are 2 groups left.
+#' Get the number of groups which show invariance with each of the groups
+#' @param fit Output of \code{\link{incrementalFit}}.
+#' @param sort  Logical. Should the results be sorted?
+#' @param fit.index Character. What measure should be used?
+#' @param cutoff The cutoff of the difference in `fit.index` to decide whether invariance holds.
+#' @param drop Character list of the groups that should be excluded from calculations.
+#' @param df Logical, if the data.frame of the comparison tree should be returned. If TRUE, `sort` and `drop` are ignored.
+#'
+#' @returns  If df = FALSE, returns a data frame with two columns: group name and the number of groups with invariant parameters. IF df = TRUE, calculates the number of gorups iteratively, by dropping the least invariant group at each iteration until there are 2 groups left. Returns a data frame with N-1 columns, where N is number of groups.
+
 #' @export
-#' 
-n_invariant_matrix <- function(...) {
+nInvariant <- function(fit, sort=F, fit.index="cfi", cutoff=.01, drop=NA, df=FALSE) {
   
-  n.inv <- MIE:::n_invariant(..., sort=T, drop=NA)
+  if(!df) {
+    MIE:::nInvariant_(fit = fit, fit.index = fit.index, cutoff = cutoff, sort=sort, drop=drop)
+  } else {
+    
+  n.inv <- MIE:::nInvariant_(fit = fit, fit.index = fit.index, cutoff = cutoff, sort=T, drop=NA)
   dropped <-NA
   n.inv.list <- n.inv
   
@@ -445,18 +453,16 @@ n_invariant_matrix <- function(...) {
     
     dropped <- na.omit(c(dropped, n.inv[1,1]))
     
-    n.inv <- MIE:::n_invariant(..., sort=T, drop=dropped)
+    n.inv <- MIE:::nInvariant_(fit = fit, fit.index = fit.index, cutoff = cutoff, sort=T, drop=dropped)
     
     n.inv.list <- merge(n.inv.list, n.inv, by = "Group.1", all.x=T)
     
   }
   
-  
   sorted.n.inv.list <- n.inv.list[order(rowSums(is.na(n.inv.list[,-1])), decreasing = T),]
-  
   print( as.matrix(sorted.n.inv.list) , na.print = "" , quote = FALSE )
   invisible(n.inv.list)
-}
+}}
 
 #' Append lavaan syntax with group-specific covariances
 #'
@@ -465,7 +471,9 @@ n_invariant_matrix <- function(...) {
 #' @param data data frame
 #' @param cov character, covariance to add, e.g. "variable1 ~~ variable2"
 #' @param focal.groups Character vector for the groups to add the cov.
-#' @examples cov.model <-  "F =~ v1 + v2 v3 + v4 + v5"
+#' @examples
+#' \dontrun{
+#' cov.model <-  "F =~ v1 + v2 v3 + v4 + v5"
 #' cov.model.custom.covs <-
 #'    lav.mod %>%
 #'      add_custom_covs("country", dat1,
@@ -473,8 +481,9 @@ n_invariant_matrix <- function(...) {
 #'
 #'      add_custom_covs("country.f", dat1,
 #'                      "v2 ~~ v3", c("Israel"))
+#' }
 #'
-#' @export
+#' @noRd
 add_custom_covs <- function(model, group, data, cov, focal.groups) {
   
   vector.zeros.nas <- paste(collapse="",
@@ -504,14 +513,16 @@ add_custom_covs <- function(model, group, data, cov, focal.groups) {
 #' @details
 #' This function builds a single model with constraints applied to subsets of groups, and compares it to the reference model (less constrained) as well as to global invariance tests.
 #' 
-#' @examples stratifiedMI("F =~ v1 + v2 + v3 + v4", 
+#' @examples  
+#' \dontrun{
+#' stratifiedMI("F =~ v1 + v2 + v3 + v4", 
 #'          group = "country", 
 #'          data = Dat1, 
 #'          strata = list(North = c("Norway", "Denmark", "Finland"), 
 #'                          South = c("Spain", "Portugal", "Italy")
 #'                          )
 #'           )
-#'
+#' }
 #' @export
 
 stratifiedMI <- function(model, group, data, strata, parameters = c("loadings", "intercepts"), ref = "configural",  ...) {

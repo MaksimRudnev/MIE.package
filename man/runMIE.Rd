@@ -17,8 +17,10 @@ runMIE(model = NULL, data = NULL, group = NULL, verbose = FALSE)
 Run Shiny MIE application
 }
 \examples{
-if (interactive()) { 
-runMIE("f =~ a1 + a2 + a3", mydr, "municipality") 
-})
+\dontrun{ 
+ if (interactive()) { 
+   runMIE("f =~ a1 + a2 + a3", mydr, "municipality") 
+ })
+}
 
 }

@@ -32,6 +32,8 @@ Run clustered measurement invariance tests
 This function builds a single model with constraints applied to subsets of groups, and compares it to the reference model (less constrained) as well as to global invariance tests.
 }
 \examples{
+ 
+\dontrun{
 stratifiedMI("F =~ v1 + v2 + v3 + v4", 
          group = "country", 
          data = Dat1, 
@@ -39,5 +41,5 @@ stratifiedMI("F =~ v1 + v2 + v3 + v4",
                          South = c("Spain", "Portugal", "Italy")
                          )
           )
-
+}
 }

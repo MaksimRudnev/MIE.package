@@ -9,15 +9,14 @@
 #' 
 #' @examples 
 #' \dontrun{
-#'    measurementInvarianceMplus(model = 
+#'    runMImplus(model = 
 #'      "F1 BY F114 F115 F116 F117;
 #'       F2 BY F118 F119  F120  F121 F122  F123;",
 #'       group = "S003",
-#'       data = wevs.subset)
 #'       }
 #' 
 #' @export
-measurementInvarianceMplus <- function(model, group, data, categorical=NULL, filename = NULL, Mplus_com = "mplus") {
+runMImplus <- function(model, group, data, categorical=NULL, filename = NULL, Mplus_com = "mplus") {
   
   
   

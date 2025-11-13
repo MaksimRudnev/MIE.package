@@ -20,7 +20,7 @@ requireNamespace("dplyr", quietly = T)
 requireNamespace("shinyjs", quietly = T)
 requireNamespace("shinyWidgets", quietly = T)
 requireNamespace("MIE", quietly = T)
-requireNamespace("LittleHelpers", quietly = T)
+#requireNamespace("LittleHelpers", quietly = T)
 options(shiny.maxRequestSize=100*1024^2) 
 
 

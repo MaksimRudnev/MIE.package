@@ -5,3 +5,10 @@ old
 papers
 rsconnect
 unnecessary
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^\.github$
+^vignettes/articles/\.quarto$
+^vignettes/articles/*_files$
+^vignettes/articles$

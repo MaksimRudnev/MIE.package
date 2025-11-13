@@ -13,6 +13,7 @@ pairwiseFit(
   message = "Fitting pairwise lavaan models",
   shiny = FALSE,
   signed = F,
+  quiet = F,
   ...
 )
 }
@@ -33,7 +34,10 @@ pairwiseFit(
 
 \item{signed}{Only for DMACS, if the signed version should be used. See Nye et al 2019}
 
-\item{...}{Arguments passed to lavaan 'cfa' function.}
+\item{...}{Arguments passed to lavaan 'cfa' function.
+ \dontrun{ 
+ pairwiseFit(model="F =~ impfree + iphlppl + ipsuces + ipstrgv", data = ess6, group = "cntry", "loadings")
+}}
 }
 \value{
 The function returns matrix of fit indices for multiple group CFA models fitted to each possible pair of groups.

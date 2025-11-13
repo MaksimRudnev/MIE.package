@@ -24,7 +24,7 @@ groupwiseCFA(
 
 \item{out}{Legacy argument, keeps only `fit` or `models` parts of the model.}
 
-\item{what}{Fit indices to print and return. Possible values are any fit measures retruend by `fitmeasures()`, a special value `mod` adds a parameter with the largest modification index and its MI value.}
+\item{what}{Fit indices to print and return. Possible values are any fit measures returned by `fitmeasures()`, a special value `mod` adds a parameter with the largest modification index and its MI value.}
 }
 \description{
 Run the same cfa within every group and extract fit indices
