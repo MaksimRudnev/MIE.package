@@ -102,7 +102,7 @@ names(pop_models) <- group_names
 
 
 sim_data <- 
-  lapply(pop_models, function(x) simulateData(
+  lapply(pop_models, function(x) lavaan::simulateData(
   model = x,
   sample.nobs = n_per_group,
   return.type = "data.frame"
@@ -115,7 +115,7 @@ sim_data <-
 
 Conventional tests of invariance would show that there is no metric invariance, as expected. `MIE` has a convenient function for this:
 
-```{r conventional_mgcfa, echo=T}
+```{r conventional_mgcfa}
 
 global_mi_test = globalMI(
   model = 'F1 =~ v1  + v2  + v3  + v4;
@@ -129,6 +129,10 @@ global_mi_test = globalMI(
 global_mi_test$fit %>% round(3)
 
 ```
+
+
+
+
  Comparing CFI and RMSEA across models shows that metric invariance is not supported. What should we do next? Some of our options are:
 
 1. find a subset of parameters which is invariant across all groups;
