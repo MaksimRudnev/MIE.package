@@ -34,10 +34,7 @@ pairwiseFit(
 
 \item{signed}{Only for DMACS, if the signed version should be used. See Nye et al 2019}
 
-\item{...}{Arguments passed to lavaan 'cfa' function.
- \dontrun{ 
- pairwiseFit(model="F =~ impfree + iphlppl + ipsuces + ipstrgv", data = ess6, group = "cntry", "loadings")
-}}
+\item{...}{Arguments passed to lavaan 'cfa' function.}
 }
 \value{
 The function returns matrix of fit indices for multiple group CFA models fitted to each possible pair of groups.
@@ -47,4 +44,13 @@ Computes MGCFA model for a given pair of groups
 }
 \details{
 Mostly for internal use  within \code{\link[MIE]{incrementalFit}}
+}
+\examples{
+\dontrun{ 
+ pairwiseFit(model = "F =~ impfree + iphlppl + ipsuces + ipstrgv", 
+             data = ess6, 
+             group = "cntry", 
+             constraints = "loadings")
+}
+
 }

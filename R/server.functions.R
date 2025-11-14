@@ -313,9 +313,12 @@ pairs_of_groups <- function(variable) {
 #' @param shiny If it is executed in shiny environment.
 #' @param signed Only for DMACS, if the signed version should be used. See Nye et al 2019
 #' @param ... Arguments passed to lavaan 'cfa' function.
-# @examples
-#'  \dontrun{ 
-#'  pairwiseFit(model="F =~ impfree + iphlppl + ipsuces + ipstrgv", data = ess6, group = "cntry", "loadings")
+#' @examples
+#' \dontrun{ 
+#'  pairwiseFit(model = "F =~ impfree + iphlppl + ipsuces + ipstrgv", 
+#'              data = ess6, 
+#'              group = "cntry", 
+#'              constraints = "loadings")
 #' }
 #' 
 #' @return  The function returns matrix of fit indices for multiple group CFA models fitted to each possible pair of groups.

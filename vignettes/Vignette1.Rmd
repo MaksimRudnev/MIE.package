@@ -1,6 +1,5 @@
 ---
 title: "Finding clusters of groups with invariant measurement"
-author: "Maksim"
 date: "`r Sys.Date()`"
 format: 
   html:
@@ -9,7 +8,7 @@ format:
     bootstrap: 5
 vignette: >
   %\VignetteIndexEntry{Exploring Measurement Invariance with the Measurement Invariance Explorer (MIE)}
-  %\VignetteEngine{quarto::html}
+  %\VignetteEngine{knitr::html}
   %\VignetteEncoding{UTF-8}
 ---
 
@@ -71,7 +70,7 @@ The issue is that we don't know in advance, that these 4 regions exist, and whic
 #| message: false
 #| warning: false
 #| paged-print: false
-library(lavaan)
+
 set.seed(1234)
 n_per_group <- 500
 
