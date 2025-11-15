@@ -9,5 +9,5 @@ unnecessary/*
 tests
 TODO
 MIE.Rproj
-docs
 **/.quarto/
+_pkgdown.yml

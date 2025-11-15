@@ -6,7 +6,6 @@ template:
 authors:
   Maksim Rudnev: ~
   href: https://maksimrudnev.com
-articles: []
 reference:
 - title: Get distances in terms of measurement invariance
   desc: The main functions here are getMetrics() and plotDistances(), the others are

@@ -1,0 +1,9 @@
+pandoc: 3.6.3
+pkgdown: 2.1.1
+pkgdown_sha: ~
+articles:
+  Vignette1: Vignette1.html
+last_built: 2025-11-15T18:34Z
+urls:
+  reference: https://maksimrudnev.github.io/MIE.package/reference
+  article: https://maksimrudnev.github.io/MIE.package/articles
