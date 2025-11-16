@@ -312,7 +312,7 @@ pairs_of_groups <- function(variable) {
 #' @param message Notification in shiny.
 #' @param shiny If it is executed in shiny environment.
 #' @param signed Only for DMACS, if the signed version should be used. See Nye et al 2019
-#' @param ... Arguments passed to lavaan 'cfa' function.
+#' @param ... Arguments passed to \code{\link[lavaan]{cfa}} function.
 #' @examples
 #' \dontrun{ 
 #'  pairwiseFit(model = "F =~ impfree + iphlppl + ipsuces + ipstrgv", 
@@ -512,7 +512,7 @@ mgcfaParameters <- function(model=NULL,
                             data, 
                             group = "cntry", 
                             parameters = "loadings",  
-                            extra.options=NULL, 
+                            ..., 
                             shiny = FALSE) {
   data=data[,c(group, colnames(data)[colnames(data)!=group])]
   if(is.null(model)) {
@@ -534,7 +534,7 @@ mgcfaParameters <- function(model=NULL,
       old_option <- getOption("show.error.messages")
       options(show.error.messages = FALSE)
       
-      cfa.argument.list <- append(list(model=model, data=data, group=group, group.equal=constraint), extra.options)
+      cfa.argument.list <- append(list(model=model, data=data, group=group, group.equal=constraint), list(...))
       
       mod<-try(do.call("cfa",  cfa.argument.list, quote = FALSE), silent=TRUE)
       options(show.error.messages = TRUE) 

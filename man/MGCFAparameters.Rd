@@ -9,7 +9,7 @@ mgcfaParameters(
   data,
   group = "cntry",
   parameters = "loadings",
-  extra.options = NULL,
+  ...,
   shiny = FALSE
 )
 }
@@ -22,9 +22,9 @@ mgcfaParameters(
 
 \item{parameters}{Character. If "loadings" then configural model is fitted and loadings are returned. If "intercepts" then metric invariance model is fitted and intercepts are returned.}
 
-\item{extra.options}{Currently not used}
-
 \item{shiny}{Logical. If it is evaluated in a shiny context. Default is TRUE.}
+
+\item{extra.options}{Currently not used}
 }
 \description{
 Computes MGCFA models for all available groups in the data

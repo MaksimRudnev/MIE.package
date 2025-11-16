@@ -64,44 +64,38 @@
 </h1>
 </div>
 <p>To install, type in the RStudio console: <code>devtools::install_github("maksimrudnev/MIE.package", dependencies = TRUE)</code></p>
-<p>Invariance explorer helps to find groups that might demonstrate measurement invariance of latent factors. Instead of repeatedly running the models to test invariance, one may plot the group measures and visually select the ones that are closer to each other. * User may interactively include and exlude groups that look different (by clicking them), and the tool will automatically refit the models. * To facilitate combination of groups, they are also clustered.</p>
+<p>Invariance explorer helps to find groups that might demonstrate measurement invariance of latent factors. Instead of repeatedly running the models to find a subset of groups that do show invariance, MIE makes it easy to plot the groups based on a set of invariance metrics. First, you choose a metric of invariance in <code><a href="reference/getMetrics.html">getMetrics()</a></code>, second, you plot them with <code><a href="reference/plotDistances.html">plotDistances()</a></code>. There are many options available, a set of convenience functions to, e.g. put together and extract results of Mplus alignment models, as well as a friendly Shiny app to do all the steps interactively.</p>
 <div class="section level3">
 <h3 id="covariance-based-approach">Covariance-based approach<a class="anchor" aria-label="anchor" href="#covariance-based-approach"></a>
 </h3>
-<p>Usually, assessment of measurement invariance is based on a measurement model (which is assumed to be a true model). However, one may employ completely exploratory approach, using covariances between observed variables to find groups with the most similar structures. This is the default (and the quickest) option in the <code>Measurement invariance explorer</code>. Of course, at some point one has to specify a measurement model, but it may be done <em>after</em> finding a set of groups with similar covariance structures.</p>
-<p>If, or when, a measurement model is given, one can use it in <code>Measurement invariance explorer</code> to find sets of groups that are closer to each other using either model parameters or model fit indices.</p>
+<p>Usually, assessment of measurement invariance is based on a measurement model (which is assumed to be a true model). However, one may employ completely exploratory approach, using covariances between observed variables to find groups with the most similar structures. This is the default (and the quickest) option in <code>MIE</code> package. Of course, at some point one has to specify a measurement model, but it may be done <em>after</em> finding a set of groups with similar covariance structures.</p>
+<p>If, or when, a measurement model is given, one can use it in <code>MIE</code> to find sets of groups that are closer to each other using either model parameters or model fit indices.</p>
 </div>
 <div class="section level3">
 <h3 id="parameter-based-approach">Parameter-based approach<a class="anchor" aria-label="anchor" href="#parameter-based-approach"></a>
 </h3>
-<p>First, one has to specify measurement model using <a href="http://lavaan.ugent.be/tutorial/syntax1.html" class="external-link">lavaan syntax</a>. When you add a code, <code>Measurement invariance explorer</code> will automatically compute a common measurement invariance tests based on <code>semTools</code> package. Please, insert only ready-to-use model code, as computation may take a long time. <code>Measurement invariance explorer</code> computes configural model to compare factor loadings and metric model (with fixed factor loadings) to compare intercepts. It is recommended first be sure that you found a set of groups that have similar loadings before comparing intercepts.</p>
+<p>You need to specify a measurement model using <a href="http://lavaan.ugent.be/tutorial/syntax1.html" class="external-link">lavaan syntax</a>. <code>MIE</code> computes configural model to compare factor loadings and metric invariance model (with fixed factor loadings) to compare intercepts. It is recommended first be sure that you found a set of groups that have similar loadings before comparing intercepts.</p>
 </div>
 <div class="section level3">
 <h3 id="fit-indices-based">Fit indices-based<a class="anchor" aria-label="anchor" href="#fit-indices-based"></a>
 </h3>
-<p>When using fit indices as a measure of group proximity, <code>Measurement invariance explorer</code> computes for each pair of groups either configural and metric models , or metric and scalar models, and plots the groups based on difference between less and more restricted models, as it was suggested by <a href="http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.459.8501&amp;rep=rep1&amp;type=pdf" class="external-link">Chen, 2007</a>. Chen also suggested a threshold of .01. For convenience, a circle .01x.01 is added to the plot. If all the groups are inside this circle, it is very likely that measurement invariance holds for these groups. When using this approach, please check the actual fit indices, as the implied model is assumed to be true.</p>
+<p>When using fit indices as a measure of group proximity, <code>MIE</code> computes for each pair of groups either configural and metric models, or metric and scalar models, and plots the groups based on a difference between less and more restricted models, as it was suggested by <a href="http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.459.8501&amp;rep=rep1&amp;type=pdf" class="external-link">Chen, 2007</a>. Chen also suggested a threshold of .01. For convenience, a circle .01x.01 is added to the plot. If all the groups are inside this circle, it is very likely that measurement invariance holds for these groups. When using this approach, please check the actual fit indices (e.g., CFI should be above .9), as the implied model is assumed to be true.</p>
+</div>
+<div class="section level3">
+<h3 id="main-purpose">Main purpose<a class="anchor" aria-label="anchor" href="#main-purpose"></a>
+</h3>
+<p>This approach is useful when there are either clusters of groups or outlier groups (in terms of implied model/correlations). This approach is not very suitable for finding model misspecifications.</p>
+<p>Please read the vignettes for more details: <a href="https://maksimrudnev.github.io/MIE.package/articles/" class="uri">https://maksimrudnev.github.io/MIE.package/articles/</a></p>
 </div>
 <div class="section level3">
 <h3 id="cautions">Cautions<a class="anchor" aria-label="anchor" href="#cautions"></a>
 </h3>
 <ul>
-<li>As follows from its name, <code>Measurement invariance explorer</code> is exploratory. The plots are based basically on averaging a bunch of information, so it doesn’t guarantee that closer groups have measurement invariance.</li>
-<li>When using implied models, pay attention to the fit indices themselves, not only to their differences. Model in general should fit data well enough.</li>
-<li>The use of some fit indices in plots based on multidimensional scaling and in cluster analysis might violate assumptions, as they have not been proven to have a normal distribution / sphericity.</li>
-<li>With big datasets and complex models lavaan could take <em>a considerable amount of time</em> to get computations done. Be patient.</li>
-<li>One feature to be implemented is survey weights.</li>
+<li>As follows from its name, <code>MIE</code> is exploratory. The plots are based basically on averaging a bunch of information, so it doesn’t guarantee that closer groups have measurement invariance.</li>
+<li>When using implied models, pay attention to the fit indices themselves, not only to their differences. Model in general should fit the data well enough.</li>
+<li>The use of some fit indices in plots based on multidimensional scaling and in cluster analysis might violate assumptions, as they have not been proven to have a known distribution.</li>
+<li>With big datasets and complex models calculation of metrics could take <em>a considerable amount of time</em>.</li>
 </ul>
-</div>
-<div class="section level3">
-<h3 id="main-purpose">Main purpose<a class="anchor" aria-label="anchor" href="#main-purpose"></a>
-</h3>
-<p>This package is useful when there are either clusters of groups or outlier groups (in terms of implied model/correlations). This approach is not very suitable for finding model misspecifications.</p>
-</div>
-<div class="section level3">
-<h3 id="sister-methods---mixture">Sister methods - mixture<a class="anchor" aria-label="anchor" href="#sister-methods---mixture"></a>
-</h3>
-<p>For the more sophisticated model-based clustering see <a href="https://ppw.kuleuven.be/okp/_pdf/DeRoover2017MSFAF.pdf" class="external-link uri">https://ppw.kuleuven.be/okp/_pdf/DeRoover2017MSFAF.pdf</a> However this method is limited to differences in factor loadings only, does not provide information on specific between-group distances, and is heavly dependent on a single model fit index (BIC). In practice, this method is available only with proprietary software.</p>
-<p>Another method was suggested by <a href="https://doi.org/10.5465/apbpp.2000.5535968" class="external-link">Cheung &amp; Rensvold (2000)</a>, but it occured to be of little use.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="license">

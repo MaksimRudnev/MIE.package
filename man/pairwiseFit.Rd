@@ -34,7 +34,7 @@ pairwiseFit(
 
 \item{signed}{Only for DMACS, if the signed version should be used. See Nye et al 2019}
 
-\item{...}{Arguments passed to lavaan 'cfa' function.}
+\item{...}{Arguments passed to \code{\link[lavaan]{cfa}} function.}
 }
 \value{
 The function returns matrix of fit indices for multiple group CFA models fitted to each possible pair of groups.
