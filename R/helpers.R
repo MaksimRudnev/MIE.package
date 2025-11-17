@@ -596,7 +596,7 @@ stratifiedMI <- function(model, group, data, strata, parameters = c("loadings", 
   
   # if(length(additional)==0) {
   #   
-       LittleHelpers::lav_compare(fits[[ref]], fits[["clustered"]])
+       MIE:::lav_compare(fits[[ref]], fits[["clustered"]])
   # 
   #   } else if(length(additional)==1) {
   #   
@@ -608,5 +608,53 @@ stratifiedMI <- function(model, group, data, strata, parameters = c("loadings", 
   
   invisible(fits)
   
+}
+
+
+lav_compare <- function(..., what = c("cfi", "tli", "rmsea", "srmr", "bic", "df"), LRT = F, print  = T) {
+  
+  
+  if(length(what)<1) warning("Please choose at least one fit statistic to report.")
+  if(length(list(...))==1 & inherits(list(...)[[1]], "list") ) {
+    modellist = list(...)[[1]]
+    modelnames <- names(modellist)
+  } else {
+    modellist = list(...)
+    if(is.null(names(modellist)))
+      modelnames <- as.character(substitute(...()) )
+    else
+      modelnames <- names(modellist)
+  }
+  
+  
+  out2<- t(sapply(modellist,  function(x) {
+    all.fit= fitmeasures(x)
+    sapply(what, function(y) ifelse(any(names(all.fit) == y), all.fit[[y]], NA))
+  }))
+  diffs <- apply(out2, 2, function(v) v - c(NA, v[-length(v)]))
+  out2 <- cbind(out2, diffs)
+  
+  
+  
+  rownames(out2)<-modelnames
+  
+  out = out2
+  
+  if(LRT) {
+    # LRT <- do.call(lavaan::lavTestLRT, append(modellist, list(model.names = modelnames)))
+    # above does not work properly
+    args.for.lav.LRT = append(modellist, list(modelnames))
+    names(args.for.lav.LRT) <- c("object", rep("", length(modellist)-1), "model.names")
+    LRT <- do.call(lavaan::lavTestLRT, args.for.lav.LRT)
+    
+    if(print) print(LRT)
+    out = list(fit=out2, LRT = LRT)
+  }
+  
+  if(print) {
+    cat("\n")
+    print(round(out2, 3), digits=3, row.names = TRUE, na.print = "" )
+  }
+  invisible(out)
 }
 
