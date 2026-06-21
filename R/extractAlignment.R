@@ -171,7 +171,7 @@ if(is.matrix(used.vars.list)) {
   # Extract mean comparison ######
   extractAlignedMeans <- function(string) {
 
-  if(!mplus.version %in% c("8.9", "8.10", "8.11", "9") & 
+  if(!mplus.version %in% c("8.9", "8.10", "8.11", "9", "9.1") & 
      estimator!="BAYES") {
     
     mean.comparison <- MIE:::extractBetween(
@@ -183,6 +183,8 @@ if(is.matrix(used.vars.list)) {
     mean.comparison <- MIE:::extractBetween(
       "FACTOR INTERCEPT COMPARISON AT THE 5% SIGNIFICANCE LEVEL IN DESCENDING ORDER", 
       "\n\n\n\n\n", b.string)
+    
+    
     
    } else {
     
@@ -280,7 +282,7 @@ if("ranking" %in% what) {
     "Approximate Invariance Was Not Found For This Parameter.", 
     "Approximate Measurement Invariance Holds For Groups:", align.outp)
 
-  if(mplus.version %in% c("8.8", "8.9", "8.10", "8.11", "9") & estimator!="BAYES") { 
+  if(mplus.version %in% c("8.8", "8.9", "8.10", "8.11", "9", "9.1") & estimator!="BAYES") { 
     
       align.outp1 <- strsplit(align.outp, "\n\n\n Loadings for ", fixed=T)[[1]]
     

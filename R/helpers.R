@@ -93,10 +93,16 @@ groupwiseCFA <- function(model,  data, group, ..., out = NULL,
 
 #' Summarize a list of CFAs produced by lavaan
 #'
-#' @param model.list A list of models in lavaan syntax. Can be an object of class groupwise.CFA
+#' @param model.list A list of models in lavaan syntax. Can be an object of class groupwiseCFA
+#' @param what Character vector of fit indices to extract. Possible values are any fit measures returned by `fitmeasures()`, e.g., "cfi", "rmsea", "srmr".
+#' @param diagnose Logical. If TRUE, adds columns with diagnostics about convergence, negative variances, and correlations greater than 1.
+#' @param corrs Logical. If TRUE, adds columns with the highest factor correlation and the factors involved.
+#' @param mod Logical. If TRUE, adds columns with the largest modification index and the associated parameter.
+#' @param n Logical. If TRUE, adds a column with the sample size for each model.
+#' @param nitems Logical. If TRUE, adds a column with the number of items in each model.
 #'
 #' @export
-summary.groupwiseCFA <- function(model.list, what = c("cfi", "rmsea", "srmr"), diagnose = T, corrs = F, mod = F, n = F) { # list of fitted CFAs
+summary.groupwiseCFA <- function(model.list, what = c("cfi", "rmsea", "srmr"), diagnose = T, corrs = F, mod = F, n = F, nitems = F) { # list of fitted CFAs
  
   
   
@@ -118,7 +124,7 @@ summary.groupwiseCFA <- function(model.list, what = c("cfi", "rmsea", "srmr"), d
   
   fit.idx = sapply(model.list, function(x) {
     if(lavInspect(x, "converged"))
-      fitMeasures(x)[what]
+      fitMeasures(x, fit.measures = what)
     else 
       sapply(what, function(yy) NA)
   })
@@ -127,28 +133,21 @@ summary.groupwiseCFA <- function(model.list, what = c("cfi", "rmsea", "srmr"), d
   if(diagnose) {
     diagnostics = data.frame(
       converged=ifelse(sapply(model.list, lavInspect, "converged"), "", "NO"),
-      corr.greater.1 =
-        
-        # sapply(model.list, function(x) 
-        # ifelse(any(abs(unlist(lavInspect(x,"cor.lv")))>1), "YES", "")),
       
-      ifelse(any(
+      corr.greater.1 =
         sapply(model.list, 
                function(x) 
-                 any(abs(unlist(lavInspect(x, "cor.lv", drop.list.single.group = F))) > 1))
-               
-        ), "YES", ""),
+                 
+                 ifelse(any(abs(unlist(lavInspect(x, "cor.lv", drop.list.single.group = F))) > 1),
+                        "YES", "")
+               ),
       
       negat.lv.variance = 
-        # sapply(model.list, function(x)
-        # ifelse(any(diag(lavInspect(x, "cov.lv"))<0), "YES", "")),
-      
-      ifelse(any(
         sapply(model.list, 
                function(x) 
-                 any(unlist(sapply(lavInspect(x, "cov.lv", drop.list.single.group = F), diag)) < 0)
-               
-        )), "YES", ""),
+                 ifelse(any(unlist(sapply(lavInspect(x, "cov.lv", drop.list.single.group = F), 
+                                          diag)) < 0), "YES", "")
+               ),
       
       
       negat.ov.variance = 
@@ -229,6 +228,11 @@ summary.groupwiseCFA <- function(model.list, what = c("cfi", "rmsea", "srmr"), d
     
     out = cbind(out, n = n)
     
+  }
+  
+  if(nitems) {
+    nitems <- sapply(model.list, function(x)  length(lavNames(x)))
+    out = cbind(out, n.items = nitems)
   }
 
   

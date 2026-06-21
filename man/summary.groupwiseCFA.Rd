@@ -11,7 +11,8 @@
   diagnose = T,
   corrs = F,
   mod = F,
-  n = F
+  n = F,
+  nitems = F
 )
 
 gsumCFA(
@@ -20,11 +21,24 @@ gsumCFA(
   diagnose = T,
   corrs = F,
   mod = F,
-  n = F
+  n = F,
+  nitems = F
 )
 }
 \arguments{
-\item{model.list}{A list of models in lavaan syntax. Can be an object of class groupwise.CFA}
+\item{model.list}{A list of models in lavaan syntax. Can be an object of class groupwiseCFA}
+
+\item{what}{Character vector of fit indices to extract. Possible values are any fit measures returned by `fitmeasures()`, e.g., "cfi", "rmsea", "srmr".}
+
+\item{diagnose}{Logical. If TRUE, adds columns with diagnostics about convergence, negative variances, and correlations greater than 1.}
+
+\item{corrs}{Logical. If TRUE, adds columns with the highest factor correlation and the factors involved.}
+
+\item{mod}{Logical. If TRUE, adds columns with the largest modification index and the associated parameter.}
+
+\item{n}{Logical. If TRUE, adds a column with the sample size for each model.}
+
+\item{nitems}{Logical. If TRUE, adds a column with the number of items in each model.}
 }
 \description{
 Summarize a list of CFAs produced by lavaan

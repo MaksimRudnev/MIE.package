@@ -971,13 +971,16 @@ plotDist <- function(measures, n.clusters = "auto", fit.index="cfi", drop = NULL
     theme_minimal()+
     coord_fixed()+
     scale_colour_hue(l = 50, c = 120)+
-    theme(panel.grid = element_blank(), axis.line=element_line(size=.5),axis.ticks=element_line(size=.5), plot.title=element_text(face="bold", size=18))+
+    theme(panel.grid = element_blank(), 
+          axis.line=element_line(linewidth=.5),
+          axis.ticks=element_line(linewidth=.5), 
+          plot.title=element_text(face="bold", lineheight=18))+
    geom_shape(data = hulls, alpha = .4, linetype="blank", aes(fill = as.factor(cluster)), 
                expand = unit(10, "points"), radius = unit(10, "points"),
                show.legend = F)+
     labs(caption=paste("Distances represent measurement non-invariance"))
  
-
+ 
  
  
  
@@ -1165,7 +1168,7 @@ if(any(!fit.index %in% c("cfi", "rmsea", "srmr"))) {
       theme_void()+
       coord_fixed()+
       scale_colour_hue(l = 50, c = 120)+
-      theme(panel.grid = element_blank(), axis.line=element_line(size=.5),axis.ticks=element_line(size=.5), plot.title=element_text(face="bold", size=18))+
+      theme(panel.grid = element_blank(), axis.line=element_line(linewidth=.5),axis.ticks=element_line(linewidth=.5), plot.title=element_text(face="bold", size=18))+
       labs(caption=paste("Lines represent measurement invariance"))
     
 g
