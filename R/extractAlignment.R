@@ -597,9 +597,27 @@ if(estimator=="MLR") {
 
 
 #' Extracts DIFF alignment results from Mplus output string
-#' @param input  Mplus output either as a single string or filename
+#' @param input  Mplus output either as a single string or a filename
 #' @param file Logical. If TRUE, `input` is treated as a filename.
-#' @details  Mplus input file has to include the 'align;' in the OUTPUT section and    'DIFF()' statements in the 'Model prior' section.
+#' @details  Mplus input file has to include the `OUTPUT: align;` in the OUTPUT section and `DIFF()` statements in the `Model priors:` section.
+#' @returns Returns a list of values extracted from Mplus output as well as their summaries.
+#'  $summaries [for each set and DIFF statement]:
+#'  
+#'  - al.pars - set of tested parameters, truncated (!);
+#'  - N_invariant - number of invariant parameters (from 'Approximate Invariance Holds For' section)
+#'  - N_noninvariant - total nuber of parameters  in the set minus `N_invariant`;
+#'  - Noninvariant.params  - list of non-invariant parameters (labels);
+#'  - Chi.square, df, p-value - omnibus chi-square test of differences of each parameter from the set's average;
+#'  - Average.invariant.value - set's average parameter.
+#'  
+#'  $outputs: for each set of parameters in the diff-alignment statements:
+#'  
+#'  - param.list - parameters in the aligned set;
+#'  - chisq - chi-square test, significant when at least one parameter (e.g., in one of the groups) deviates from the aligned parameter;
+#'  - comparison.table - pairwise comparisons of all the parameters in the set, can be very long;
+#'  - Average.invariant.value - Average Value Across Invariant Parameters, aka aligned parameter;
+#'  - invariant.param.list - 'Approximate Invariance Holds For',
+#'  - compared.to.invar.value - 'Invariant Values, Difference to Average and Significance'.
 #' @examples
 #' # b.string = readLines("fixed.out")
 #' # alf.out = getAlfDiff(b.string)
@@ -607,7 +625,7 @@ if(estimator=="MLR") {
 extractAlfDiff <- function(input, file = T) {
   
   if(file) {
-  if(!file.exists(input)) warning("File not found")
+  if(!file.exists(input)) stop("File not found")
   b.vector = readLines(input)
   b.vector <- gsub("!.*", "", b.vector)
   mplus.string <-  paste(b.vector, collapse="\n")
@@ -616,9 +634,10 @@ extractAlfDiff <- function(input, file = T) {
   }
   
   
+  #gregexec("ALIGNMENT OUTPUT", mplus.string)
   al.string = strsplit(mplus.string, "ALIGNMENT OUTPUT")[[1]][[2]]
   al.string = strsplit(al.string, "\n\n\n\n(^DIFF ANALYSIS FOR PARAMETERS)")[[1]][[1]]
-  
+  #length(al.string)
   
   al.string.sections = strsplit(al.string, "(DIFF ANALYSIS FOR PARAMETERS)")[[1]][-1]
   length(al.string.sections)
@@ -682,7 +701,7 @@ outputs = lapply(al.string.sections, function(x)  {
 
 
 summaries = lapply(outputs, function(x) data.frame(
-  al.pars = substr(paste(x$param.list, collapse=", "), 1, 20),
+  al.pars = paste(substr(paste(x$param.list, collapse=", "), 1, 20), ">>>"),
   N_invariant = length(x$invariant.param.list),
   N_noninvariant = length(x$param.list) - length(x$invariant.param.list),
   Noninvariant.params = paste(setdiff(x$param.list, 

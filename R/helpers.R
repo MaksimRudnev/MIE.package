@@ -520,16 +520,31 @@ add_custom_covs <- function(model, group, data, cov, focal.groups) {
 #' @examples  
 #' \dontrun{
 #' stratifiedMI("F =~ v1 + v2 + v3 + v4", 
-#'          group = "country", 
 #'          data = Dat1, 
+#'          group = "country", 
 #'          strata = list(North = c("Norway", "Denmark", "Finland"), 
 #'                          South = c("Spain", "Portugal", "Italy")
 #'                          )
 #'           )
+#'           
+#' # Alternative specification with two grouping variables assuming they are available in the data:
+#'  stratifiedMI("F =~ v1 + v2 + v3 + v4", 
+#'          group1 = "country", 
+#'          group2 = "year",
+#'          data = Dat1
+#'          )
 #' }
 #' @export
 
-stratifiedMI <- function(model, group, data, strata, parameters = c("loadings", "intercepts"), ref = "configural",  ...) {
+
+
+stratifiedMI <- function(model, group, data, strata, parameters = c("loadings", "intercepts"), ref = "configural", group1=NULL, group2=NULL,  ...) {
+  
+  if(all(!is.null(group1) & !is.null(group2))) {
+    group = paste0(group1,"_", group2)
+    data[,paste0(group1,"_", group2)] = paste0(data[,group1], data[,group2])
+    strata = lapply(setNames(nm=unique(data[[group1]])), function(x) unique(data[data[[group1]]==x, group]))
+  }
   
   #additional = c("scalar"),
   

@@ -7,15 +7,35 @@
 extractAlfDiff(input, file = T)
 }
 \arguments{
-\item{input}{Mplus output either as a single string or filename}
+\item{input}{Mplus output either as a single string or a filename}
 
 \item{file}{Logical. If TRUE, `input` is treated as a filename.}
+}
+\value{
+Returns a list of values extracted from Mplus output as well as their summaries.
+ $summaries [for each set and DIFF statement]:
+ 
+ - al.pars - set of tested parameters, truncated (!);
+ - N_invariant - number of invariant parameters (from 'Approximate Invariance Holds For' section)
+ - N_noninvariant - total nuber of parameters  in the set minus `N_invariant`;
+ - Noninvariant.params  - list of non-invariant parameters (labels);
+ - Chi.square, df, p-value - omnibus chi-square test of differences of each parameter from the set's average;
+ - Average.invariant.value - set's average parameter.
+ 
+ $outputs: for each set of parameters in the diff-alignment statements:
+ 
+ - param.list - parameters in the aligned set;
+ - chisq - chi-square test, significant when at least one parameter (e.g., in one of the groups) deviates from the aligned parameter;
+ - comparison.table - pairwise comparisons of all the parameters in the set, can be very long;
+ - Average.invariant.value - Average Value Across Invariant Parameters, aka aligned parameter;
+ - invariant.param.list - 'Approximate Invariance Holds For',
+ - compared.to.invar.value - 'Invariant Values, Difference to Average and Significance'.
 }
 \description{
 Extracts DIFF alignment results from Mplus output string
 }
 \details{
-Mplus input file has to include the 'align;' in the OUTPUT section and    'DIFF()' statements in the 'Model prior' section.
+Mplus input file has to include the `OUTPUT: align;` in the OUTPUT section and `DIFF()` statements in the `Model priors:` section.
 }
 \examples{
 # b.string = readLines("fixed.out")

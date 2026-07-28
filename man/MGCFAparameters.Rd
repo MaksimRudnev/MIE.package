@@ -7,7 +7,7 @@
 mgcfaParameters(
   model = NULL,
   data,
-  group = "cntry",
+  group = NA,
   parameters = "loadings",
   ...,
   shiny = FALSE
@@ -20,7 +20,7 @@ mgcfaParameters(
 
 \item{group}{Character. Grouping variable.}
 
-\item{parameters}{Character. If "loadings" then configural model is fitted and loadings are returned. If "intercepts" then metric invariance model is fitted and intercepts are returned.}
+\item{parameters}{Character. If "loadings" then configural model is fitted and loadings are returned. If "intercepts" then metric invariance model is fitted and intercepts are returned. Currently not supporting models with ordered indicators.}
 
 \item{shiny}{Logical. If it is evaluated in a shiny context. Default is TRUE.}
 

@@ -184,15 +184,12 @@ NB. There is also very promising approach called dMACs but it's not implemented 
 Let's see how MIE works with our simulated data. We need to pick the measure, calculate it, and plot the results. First we will use correlations, next loadings, and finally CFI as measures of distance between groups. 
 
 ```{r mie_correlation, echo=T}
-
-
 corrs <- getMetrics(
   group = "group", 
   data = sim_data, 
   metric = "correlation")
 
 plotDistances(corrs)
-
 ```
 
 
@@ -375,4 +372,37 @@ As we can see, the alignment has not managed to identify groups with non-invaria
 
 To sum up, MIE provides a flexible and visual framework to explore measurement invariance across many groups. It can help identify clusters of similar groups when traditional methods struggle. However, it is exploratory in nature and should be complemented with confirmatory analyses.
 
+
+
+```{r network approach, echo=T}
+
+library(NetworkDistance)
+library(bootnet)
+
+group_nets <- lapply(split(sim_data, sim_data$group), function(x) {
+  
+  estimateNetwork(data = x[, -c(1,2)],
+                      default = "EBICglasso",
+                      corMethod = "cor",
+                  missing = "pairwise"
+
+  )
+})
+
+dist.bet.networks = NetworkDistance::nd.gdd(lapply(group_nets, function(x) x$graph))$D
+
+dimnames(dist.bet.networks) <- rep(list(names(group_nets)), 2)
+
+heatmap(as.matrix(dist.bet.networks))
+smacof::mds(dist.bet.networks)$conf %>% as.data.frame %>%
+  mutate(country.lang = row.names(.)) %>%
+  ggplot(aes(x=D1, y=D2, label=country.lang))+
+  geom_point(color = "red")+
+  geom_text_repel(vjust = -1)+
+  theme_bw()+
+  coord_equal()+
+  ggtitle("MDS of Graph Diffusion Distances across countries")
+
+
+```
 

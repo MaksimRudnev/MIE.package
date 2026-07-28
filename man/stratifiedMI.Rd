@@ -11,6 +11,8 @@ stratifiedMI(
   strata,
   parameters = c("loadings", "intercepts"),
   ref = "configural",
+  group1 = NULL,
+  group2 = NULL,
   ...
 )
 }
@@ -35,11 +37,18 @@ This function builds a single model with constraints applied to subsets of group
  
 \dontrun{
 stratifiedMI("F =~ v1 + v2 + v3 + v4", 
-         group = "country", 
          data = Dat1, 
+         group = "country", 
          strata = list(North = c("Norway", "Denmark", "Finland"), 
                          South = c("Spain", "Portugal", "Italy")
                          )
           )
+          
+# Alternative specification with two grouping variables assuming they are available in the data:
+ stratifiedMI("F =~ v1 + v2 + v3 + v4", 
+         group1 = "country", 
+         group2 = "year",
+         data = Dat1
+         )
 }
 }

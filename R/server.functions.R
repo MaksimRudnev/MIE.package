@@ -502,7 +502,7 @@ get_pairs <- function(df)  attr(df, "pairs.of.groups")
 #' @param model Model in lavaan syntax
 #' @param data The data
 #' @param group Character. Grouping variable.
-#' @param parameters Character. If "loadings" then configural model is fitted and loadings are returned. If "intercepts" then metric invariance model is fitted and intercepts are returned.
+#' @param parameters Character. If "loadings" then configural model is fitted and loadings are returned. If "intercepts" then metric invariance model is fitted and intercepts are returned. Currently not supporting models with ordered indicators.
 #' @param extra.options Currently not used
 #' @param shiny Logical. If it is evaluated in a shiny context. Default is TRUE.
 #' 
@@ -510,10 +510,12 @@ get_pairs <- function(df)  attr(df, "pairs.of.groups")
 #' @export 
 mgcfaParameters <- function(model=NULL,
                             data, 
-                            group = "cntry", 
+                            group = NA, 
                             parameters = "loadings",  
                             ..., 
                             shiny = FALSE) {
+  
+  if(any(is.na(group))) stop("Argument 'group' cannot be NA")
   data=data[,c(group, colnames(data)[colnames(data)!=group])]
   if(is.null(model)) {
     if(shiny) {
@@ -535,17 +537,21 @@ mgcfaParameters <- function(model=NULL,
       options(show.error.messages = FALSE)
       
       cfa.argument.list <- append(list(model=model, data=data, group=group, group.equal=constraint), list(...))
-      
-      mod<-try(do.call("cfa",  cfa.argument.list, quote = FALSE), silent=TRUE)
+      #str(cfa.argument.list)
+      mod<-try(do.call("cfa",  cfa.argument.list, quote = FALSE), silent=F)
       options(show.error.messages = TRUE) 
       # Show error message or extract the parameters
       if(is(mod, "try-error")) {
         
         er1 <- paste(strsplit(mod, "ERROR: ")[[1]][2])
-        if(length(er1>299)) er1 <- paste(strtrim( er1, 300), "...", sep="")
+     
+      if(length(er1>299)) er1 <- paste(strtrim( er1, 300), "...", sep="")
         
-      if(shiny)  showNotification("Error in lavaan:", action=  er1, type="error", duration = NULL)
-        stop("Stopped due to error in lavaan")
+      if(shiny)  {
+        showNotification("Error in lavaan:", action=  er1, type="error", duration = NULL)
+      } else {
+        stop(paste("Stopped due to error in lavaan", er1))
+      }
         rm(er1)
         
       } else {
