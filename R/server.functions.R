@@ -515,111 +515,114 @@ mgcfaParameters <- function(model=NULL,
                             ..., 
                             shiny = FALSE) {
   
-  if(any(is.na(group))) stop("Argument 'group' cannot be NA")
+  if(any(is.na(group)|is.null(model)|is.na(parameters))) 
+    stop("Arguments 'group', 'data', and 'parameters' must be specified")
+  
+  if(is.null(model) & shiny) 
+      showNotification("The model is not specified", type="error")
+  
+  
+  # put group column on the first position
   data=data[,c(group, colnames(data)[colnames(data)!=group])]
-  if(is.null(model)) {
-    if(shiny) {
-    showNotification("The model is not specified", type="error")
-    } else {
-      warning("Please specify a model")
-    }
-    # Errors$nomodel = TRUE
-    # c("error")
-  } else {
-    
+  
+    # Running the model ~~~~~~~~~~~~~~~~~~~~
+    # define the model
     constraint <- ifelse(parameters == "intercepts", c("loadings"), "")
     operator   <- ifelse(parameters == "intercepts", "~1", "=~")
-    #left.or.right <- ifelse(configural.or.metric=="metric", "lhs", "rhs")
     
-    extractPars <- function() {
-      #mod<-cfa(model, data, group="cntry", group.equal=constraint)
-      old_option <- getOption("show.error.messages")
-      options(show.error.messages = FALSE)
+    
+    old_option <- getOption("show.error.messages")
+    options(show.error.messages = FALSE)
+    
+    cfa.argument.list <- append(list(model=model, data=data, group=group, group.equal=constraint), list(...))
+    mod<-try(do.call("cfa",  cfa.argument.list, quote = FALSE), silent=F)
+    
+ 
+    # Error handling ~~~~~~~~~~~~~~~~~~~~
+    # Show error message or extract the parameters
+    options(show.error.messages = TRUE) 
+    if(is(mod, "try-error")) {
       
-      cfa.argument.list <- append(list(model=model, data=data, group=group, group.equal=constraint), list(...))
-      #str(cfa.argument.list)
-      mod<-try(do.call("cfa",  cfa.argument.list, quote = FALSE), silent=F)
-      options(show.error.messages = TRUE) 
-      # Show error message or extract the parameters
-      if(is(mod, "try-error")) {
-        
-        er1 <- paste(strsplit(mod, "ERROR: ")[[1]][2])
-     
+      er1 <- paste(strsplit(mod, "ERROR: ")[[1]][2])
       if(length(er1>299)) er1 <- paste(strtrim( er1, 300), "...", sep="")
-        
+      
       if(shiny)  {
         showNotification("Error in lavaan:", action=  er1, type="error", duration = NULL)
       } else {
         stop(paste("Stopped due to error in lavaan", er1))
       }
-        rm(er1)
-        
-      } else {
-        
-        #print("lavCALL"); print(mod@call[-3])
-        
-        #If non-positive definite, show notification
-        if(lavaan::lavInspect(mod, "post.check")==FALSE & shiny) {
-          showNotification("The model produced non-positive definite matrix.",
-                           action = a(href = "javascript:location.reload();", "Reload page"))
-        } else if(lavInspect(mod, "post.check")==FALSE & !shiny) {
-          warning("The model produced non-positive definite matrix.")
-        }
-        
-        if(shiny) incProgress(1/2)
-        # parameters<-cbind(mod@ParTable[["group"]][mod@ParTable$op==operator & mod@ParTable$free!=0],
-        #                   mod@ParTable[[left.or.right]][mod@ParTable$op==operator & mod@ParTable$free!=0],
-        #                   mod@ParTable[["est"]][mod@ParTable$op==operator & mod@ParTable$free!=0]
-        # )
-        # parameters.t<- parameters %>%  as.data.frame(.) %>% melt(., c("V1", "V2")) %>% dcast(., V1 ~ V2) 
-        requireNamespace("magrittr")
-        parameters.t <- lavaan::parTable(mod) %>%
-          base::subset(., select=c("group", "lhs", "op", "rhs", "est"), subset = op==operator & free!=0 ) %>%
-          dplyr::mutate(par=paste(lhs, ifelse(operator=="=~", "_by_", ""), rhs, sep="")) %>%
-          reshape2::melt(., c("group", "par"), measure.vars="est" ) %>% reshape2::dcast(., group ~ par) 
-        
-        
-        se.t <- lavaan::parTable(mod) %>%
-          base::subset(., select=c("group", "lhs", "op", "rhs", "se"), subset = op==operator & free!=0 ) %>%
-          dplyr::mutate(par=paste(lhs, ifelse(operator=="=~", "_by_", ""), rhs, sep="")) %>%
-          reshape2::melt(., c("group", "par"), measure.vars="se" ) %>% reshape2::dcast(., group ~ par) 
-        
-        #print(paste("Fit model with", paste(mod@Data@group.label, collapse=",")))
-        #print("parameters.t"); print(parameters.t)
-        
-        parameters<-matrix(as.numeric(unlist(parameters.t[,-1])), 
-                           ncol=ncol(parameters.t)-1,
-                           nrow=nrow(parameters.t),
-                           dimnames=list(lavInspect(mod, "group.label"), #mod@Data@group.label, #parameters.t[,1], 
-                                         names(parameters.t[,-1]) ))
-        se<-matrix(as.numeric(unlist(se.t[,-1])), 
-                           ncol=ncol(se.t)-1,
-                           nrow=nrow(se.t),
-                           dimnames=list(lavInspect(mod, "group.label"), #mod@Data@group.label, #se.t[,1], 
-                                         names(se.t[,-1]) ))
-        attr(parameters, "fit")<-fitmeasures(mod)
-        attr(parameters, "se")<-se
-        class(parameters)<- c("MGCFAparameters")
-        return(parameters)
-      }
+      rm(er1)
     }
     
+    #If non-positive definite, show notification
+    if(lavaan::lavInspect(mod, "post.check")==FALSE & shiny) {
+      showNotification("The model produced non-positive definite matrix.",
+                       action = a(href = "javascript:location.reload();", "Reload page"))
+    } else if(lavInspect(mod, "post.check")==FALSE & !shiny) {
+      warning("The model produced non-positive definite matrix.")
+    }
     
+    options(show.error.messages = old_option)
+    
+    
+  # Extracting parameters ~~~~~~~~~~~~~~~~~~~~
     if(shiny) {
       withProgress(message = paste("Computing", parameters, "MGCFA model for ALL the selected groups."), value = 0, { 
       incProgress(1/2)
       
-      mod <- extractPars()
+      mod <- extractLavPars(mod=mod, operator=operator, shiny=T)
       return(mod)
       
     })
     } else {
-      mod<-extractPars()
+      mod<-extractLavPars(mod=mod, operator=operator, shiny=F)
       return(mod)
     }
     
-  }
+  
 }
+
+#' Helper function for mgcfaParameters to extract parameters from lavaan model
+#' @param mod lavaan model object
+#' @param operator Character. Either "=~" for loadings or "~1".
+#' @param shiny If executed in shiny environment. Default is FALSE.
+#' @export
+extractLavPars <- function(mod, operator, fit = T, shiny=F) {
+  
+  if(shiny) incProgress(1/2)
+  
+  requireNamespace("magrittr")
+  
+  params  <- lavaan::parTable(mod) %>%
+    base::subset(., select=c("group", "lhs", "op", "rhs", "est", 'se'), subset = op==operator & free!=0 ) %>%
+    dplyr::mutate(par=paste(lhs, ifelse(operator=="=~", "_by_", ""), rhs, sep="")) 
+  
+  parameters.t <- params %>%
+    reshape2::melt(., c("group", "par"), measure.vars="est" ) %>% 
+    reshape2::dcast(., group ~ par) 
+  
+  se.t <- params %>%
+    reshape2::melt(., c("group", "par"), measure.vars="se" ) %>% 
+    reshape2::dcast(., group ~ par) 
+  
+  parameters <- matrix(as.numeric(unlist(parameters.t[,-1])), 
+                       ncol=ncol(parameters.t)-1,
+                       nrow=nrow(parameters.t),
+                       dimnames=list(lavInspect(mod, "group.label"),
+                                     names(parameters.t[,-1]) ))
+
+  se <- matrix(as.numeric(unlist(se.t[,-1])), 
+               ncol=ncol(se.t)-1,
+               nrow=nrow(se.t),
+               dimnames=list(lavInspect(mod, "group.label"), 
+                             names(se.t[,-1]) ))
+  
+  if(fit) attr(parameters, "fit") <- fitmeasures(mod)
+  attr(parameters, "se") <- se 
+  class(parameters) <- c("MGCFAparameters", "matrix")
+  return(parameters)
+}
+
 
 #.. Computes and formats covariance matrices ----
 #' Computes and formats covariance matrices
@@ -1005,7 +1008,7 @@ plotDist <- function(measures, n.clusters = "auto", fit.index="cfi", drop = NULL
    ), col="lightgray", linetype="dashed")
    g<-g+labs(caption="The circle has diameter .01, meaning the increment \nin the fit index is within interval recommended by Chen")
    
- } else if ( "MGCFAparameters" %in% class(measures)) {
+ } else if ( ("MGCFAparameters" %in% class(measures)) & !is.null(attr(measures, "fits"))) {
    
    fits<-attr(measures, "fit")[c("cfi", "rmsea", "srmr")]
    

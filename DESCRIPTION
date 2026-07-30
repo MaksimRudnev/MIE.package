@@ -1,7 +1,7 @@
 Package: MIE
 Title: Measurement Invariance Explorer (MIE) 
-Version: 0.6-04
-Date: Jun-23, 2026
+Version: 0.6-05
+Date: Jul-28, 2026
 URL: https://maksimrudnev.github.io/MIE.package/
 Authors@R: 
     person("Maksim", "Rudnev", , "maksim.rudnev@gmail.com", role = c("aut", "cre"),
