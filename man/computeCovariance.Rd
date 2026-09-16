@@ -4,7 +4,7 @@
 \alias{computeCovariance}
 \title{Computes and formats covariance matrices}
 \usage{
-computeCovariance(data, group)
+computeCovariance(data, group, ...)
 }
 \arguments{
 \item{data}{Data containing group variable}

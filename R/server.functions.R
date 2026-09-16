@@ -87,11 +87,11 @@ globalMI <- function(..., chi.sq=FALSE, omit = "", what = c("cfi", "tli", "rmsea
       group.partial = c(partial, group.partial)
       
     
-    if(!quiet) print(paste("Running", m, "model"))
+    if(!quiet) message(paste("Running", m, "model... "), appendLF=T)
     m.fit <- lavaan::cfa(..., group.equal = constraints, group.partial = group.partial)
     
     if(!m.fit@optim$converged) {
-      if(!quiet) print("Refitting with L-BFGS-B") 
+      if(!quiet) message("Refitting with L-BFGS-B") 
       m.fit <- lavaan::cfa(..., 
                            group.equal = constraints, 
                            group.partial = group.partial,
@@ -106,8 +106,9 @@ globalMI <- function(..., chi.sq=FALSE, omit = "", what = c("cfi", "tli", "rmsea
     
   
 
-  # Summarize the results [use lav_compare() here]
-
+  # Summarize the results [TODO: use lav_compare() here]
+  if(!quiet) message("Extracting fit indices...")
+  
   out1 <- try(do.call(lavaan::lavTestLRT, append(unname(mdls), 
                                                  list(model.names =
                                                         names(mdls)))
@@ -630,7 +631,7 @@ extractLavPars <- function(mod, operator, fit = T, shiny=F) {
 #' @param group Character, group variable
 #' 
 #' @export
-computeCovariance <- function(data, group) {
+computeCovariance <- function(data, group, ...) {
   
   #    if(input$weights=="noweight") {
   # message("Computing covariance matrix")
@@ -644,7 +645,7 @@ computeCovariance <- function(data, group) {
   
   
   #                                  #covariance matrix        #without duplications
-  tab<-sapply(dat.split, function(x) cov(x, use="complete.obs")[lower.tri(var(x, use="complete.obs"), diag = F)])
+  tab<-sapply(dat.split, function(x) cov(x, use="complete.obs", ...)[lower.tri(var(x, use="complete.obs"), diag = F)])
   
   if(is.null(group)) {
 
@@ -669,9 +670,10 @@ computeCovariance <- function(data, group) {
 #' 
 #' @param data Individual data
 #' @param group Character. Grouping variable
+#' @param partial Logical. If TRUE, computes partial correlations. Default is FALSE.
 #' 
 #' @export
-computeCorrelation <- function(data, group) {
+computeCorrelation <- function(data, group, partial = F, ...) {
   
   #    if(input$weights=="noweight") {
   # message("Computing correlation matrix")
@@ -685,8 +687,16 @@ computeCorrelation <- function(data, group) {
   }
  
   tab<-sapply(dat.split, function(x) {
-    rho = cor(x, use="complete.obs")[lower.tri(var(x, use="complete.obs"), diag = F)]
+   
+     if(partial) {
+      rho = ppcor::pcor(na.omit(x), ...)$estimate
+    } else {
+      rho = cor(x, use="complete.obs")#[lower.tri(var(x, use="complete.obs"), diag = F)]
+    }
+    
+    rho = rho[lower.tri(rho, diag = F)]
     0.5 * log((1 + rho)/(1 - rho)) #Fisher z transformation
+    
     })
   if(is.null(group)) {
     
@@ -1302,25 +1312,34 @@ dmacs_lavaan <- function(fit, signed = F, pooled.sd = T, RefGroup = 1) {
 #' @param group Character. Grouping variable
 #' @param model lavaan model syntax
 #' @param ... Additional arguments passed to \code{\link[MIE]{incrementalFit}} or \code{\link[MIE]{mgcfaParameters}}
-#' @param metric Character. Metric to be computed. One of "covariance", "correlation", "fit", or "parameters".
+#' @param metric Character. Metric to be computed. One of "covariance", "correlation", "pcorrelation", "fit", or "parameters".
 #' @return Depending on the value of `metric` argument, returns:
 #' \itemize{
 #' \item "covariance": covariance matrices across groups (output of \code{\link[MIE]{computeCovariance}})
 #' \item "correlation": correlation matrices across groups (output of \code{\link[MIE]{computeCorrelation}})
+#' \item "pcorrelation": partial correlation matrices across groups (output of \code{\link[MIE]{computeCorrelation}})
 #' \item "fit": pairwise decreases in fit indices (output of \code{\link[MIE]{incrementalFit}})
 #' \item "parameters": pairwise differences in parameters (output of \code{\link[MIE]{mgcfaParameters}})
 #' }
 #' @export
-getMetrics <- function(data, group, model, ..., metric = c("covariance", "correlation", "fit", "parameters")) {
+getMetrics <- function(data, group, model, ..., metric = c("covariance", "correlation", "pcorrelation", "fit", "parameters")) {
   
   if(length(metric)>1) {
-    warning("Only one value of 'metric' is allowed. Using the first one.", metric)
+    warning("Only one value of 'metric' is allowed. Using the first one:", metric)
     metric <- metric[[1]]
   }
   
+  # prepare data by removing unnecessary
+  lav.mod = lavaanify(model)
+  all.vars = unique(unlist(lav.mod[, c("lhs", "rhs")]))
+  lat.vars = unique(unlist(lav.mod[lav.mod$op=="=~", "lhs"]))
+  obs.vars = all.vars[!all.vars %in% lat.vars]
+  data = data[,c(group,obs.vars)]
+  
     measures <- switch(metric,
-                       covariance = computeCovariance(data, group),
-                       correlation = computeCorrelation(data, group),
+                       covariance = computeCovariance(data, group, ...),
+                       correlation = computeCorrelation(data, group, ...),
+                       pcorrelation = computeCorrelation(data, group, partial = T, ...),
                        fit = incrementalFit(model = model, data = data, group = group, ...),
                        parameters = mgcfaParameters(model = model, data = data, group = group, ...)
     )

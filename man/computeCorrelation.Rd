@@ -4,12 +4,14 @@
 \alias{computeCorrelation}
 \title{Computes and formats Fisher's transformed correlation matrices}
 \usage{
-computeCorrelation(data, group)
+computeCorrelation(data, group, partial = F, ...)
 }
 \arguments{
 \item{data}{Individual data}
 
 \item{group}{Character. Grouping variable}
+
+\item{partial}{Logical. If TRUE, computes partial correlations. Default is FALSE.}
 }
 \description{
 Computes and formats Fisher's transformed correlation matrices

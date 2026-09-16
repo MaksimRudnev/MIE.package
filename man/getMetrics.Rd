@@ -9,7 +9,7 @@ getMetrics(
   group,
   model,
   ...,
-  metric = c("covariance", "correlation", "fit", "parameters")
+  metric = c("covariance", "correlation", "pcorrelation", "fit", "parameters")
 )
 }
 \arguments{
@@ -21,13 +21,14 @@ getMetrics(
 
 \item{...}{Additional arguments passed to \code{\link[MIE]{incrementalFit}} or \code{\link[MIE]{mgcfaParameters}}}
 
-\item{metric}{Character. Metric to be computed. One of "covariance", "correlation", "fit", or "parameters".}
+\item{metric}{Character. Metric to be computed. One of "covariance", "correlation", "pcorrelation", "fit", or "parameters".}
 }
 \value{
 Depending on the value of `metric` argument, returns:
 \itemize{
 \item "covariance": covariance matrices across groups (output of \code{\link[MIE]{computeCovariance}})
 \item "correlation": correlation matrices across groups (output of \code{\link[MIE]{computeCorrelation}})
+\item "pcorrelation": partial correlation matrices across groups (output of \code{\link[MIE]{computeCorrelation}})
 \item "fit": pairwise decreases in fit indices (output of \code{\link[MIE]{incrementalFit}})
 \item "parameters": pairwise differences in parameters (output of \code{\link[MIE]{mgcfaParameters}})
 }

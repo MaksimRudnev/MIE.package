@@ -188,7 +188,9 @@ summary.groupwiseCFA <- function(model.list, what = c("cfi", "rmsea", "srmr"), d
       }
     })
     
-    max.corrs = melt(corrs, id.vars = c("factors")) %>% select(1,3) %>% set_colnames(c("Max_Cor_Factors", "Max_Corr"))
+    max.corrs = melt(corrs, id.vars = c("factors")) %>% 
+      dplyr::select(1,3) %>% 
+      set_colnames(c("Max_Cor_Factors", "Max_Corr"))
     
 
     
