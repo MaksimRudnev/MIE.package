@@ -1,14 +1,12 @@
 ---
 title: "Stratified invariance with two grouping variables"
 date: "`r Sys.Date()`"
-format:
-  html:
+output:
+  rmarkdown::html_vignette:
     toc: true
-    html-math-method: mathjax
-    bootstrap: 5
 vignette: >
   %\VignetteIndexEntry{Stratified invariance with two grouping variables}
-  %\VignetteEngine{knitr::html}
+  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
