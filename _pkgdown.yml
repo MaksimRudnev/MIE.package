@@ -39,6 +39,7 @@ reference:
   - groupwiseCFA
   - gsumCFA
   - stratifiedMI
+  - stratifiedMI2
 - title: MIE Shiny app
   contents: runMIE
 - title: Convenience functions

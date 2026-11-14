@@ -1,0 +1,207 @@
+---
+title: "Stratified invariance with two grouping variables"
+date: "`r Sys.Date()`"
+format:
+  html:
+    toc: true
+    html-math-method: mathjax
+    bootstrap: 5
+vignette: >
+  %\VignetteIndexEntry{Stratified invariance with two grouping variables}
+  %\VignetteEngine{knitr::html}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup}
+#| message: false
+#| warning: false
+library(MIE)
+library(lavaan)
+options(width = 200)
+```
+
+Groups are often defined by two variables at once. They can be *nested*: schools within countries, waves within panels, regions within states. Or they can be *crossed*: gender by ethnicity, country by survey mode. A single global test across all the combinations says whether invariance holds, but not where it fails. `stratifiedMI2()` fits a set of models in which parameters are equal only among the groups that share a level of one of the two variables, and compares them.
+
+It has two modes, `"hierarchical"` and `"intersectional"`. Both run a metric stage (loadings) followed by a scalar stage (loadings and intercepts).
+
+# How it works
+
+The finest grouping is the combination of the two variables; the function calls these combinations *cells*. Every main model uses the cells as groups. Models differ only in which cells are constrained to have equal parameters:
+
+* **all**: every cell (the usual metric or scalar model);
+* **within**: only the cells belonging to the same stratum, i.e. sharing a level of one grouping variable;
+* **additive** (intersectional mode): parameters may differ by each variable, but not by their combination.
+
+**Identification** is the same in every cell and every model: the loading of the first indicator of each factor is fixed to 1, its intercept to 0, and latent means and variances are free. Nothing has to be re-identified when the strata change, and the global models have exactly the chi-square and df that lavaan gives by default.
+
+Cells with fewer observations than the model has free parameters in one group are dropped with a warning (see the `min.n` argument).
+
+# Hierarchical mode
+
+Let's simulate five items measured in three countries, four schools each. The loading of `v3` differs between countries but not between schools of a country. The intercept of `v4` is shifted in one school of country C2.
+
+```{r sim-h}
+simulate_cell <- function(n, loadings, intercepts, mean = 0) {
+  pop <- paste0(
+    "F =~ ", paste0(loadings, "*v", 1:5, collapse = " + "), "\n",
+    paste0("v", 1:5, " ~ ", intercepts, "*1", collapse = "\n"), "\n",
+    "F ~ ", mean, "*1\n F ~~ 1*F")
+  simulateData(pop, sample.nobs = n)
+}
+
+set.seed(123)
+schools <- expand.grid(school = paste0("s", 1:4), country = paste0("C", 1:3),
+                       stringsAsFactors = FALSE)
+dat.h <- do.call(rbind, lapply(seq_len(nrow(schools)), function(i) {
+  country <- schools$country[i]
+  school  <- schools$school[i]
+  d <- simulate_cell(
+    n = 300,
+    loadings   = c(1, .8, c(C1 = .4, C2 = .8, C3 = 1.2)[[country]], .9, .6),
+    intercepts = c(0, .2, -.1, if (country == "C2" && school == "s3") .9 else .3, 0),
+    mean = rnorm(1, 0, .3))
+  d$country <- country
+  d$school  <- school
+  d
+}))
+```
+
+`group1` is the higher-level variable, `group2` the lower-level one.
+
+```{r run-h}
+#| message: false
+res.h <- stratifiedMI2("F =~ v1 + v2 + v3 + v4 + v5", data = dat.h,
+                       group1 = "country", group2 = "school",
+                       mode = "hierarchical")
+```
+
+Two messages are suppressed here. One says that school labels repeat across countries, so schools `s1` of different countries are treated as different groups. The other says that the pooled models are not corrected for clustering, because there are too few schools per country.
+
+## Models
+
+| Model | Loadings | Intercepts |
+|---|---|---|
+| `configural` | free | free |
+| `metric.within` | equal within country | free |
+| `metric.all` | equal across all schools | free |
+| `scalar.within` | equal within country | equal within country |
+| `scalar.within.metric.all` | equal across all schools | equal within country |
+| `scalar.all` | equal across all schools | equal across all schools |
+| `pooled.*` | conventional MGCFA across countries, schools pooled | |
+
+## Reading the output
+
+**Metric stage.** `configural`, `metric.within`, and `metric.all` are nested, so the overall test of metric invariance (third row) is the sum of two parts:
+
+* *loadings across school within country* is not significant: schools of the same country have the same loadings;
+* *loadings across country* is: countries differ, as simulated.
+
+The table "by stratum" splits the within-part by country. This split is exact, because countries share no parameters in `metric.within`: the model is the same as a separate MGCFA across schools in each country.
+
+**Scalar stage.** `scalar.within` adds equal intercepts within countries to `metric.within`. This test fails, and the by-stratum table shows that country C2 alone is responsible. The remaining rows separate what is left: loadings between countries (given scalar invariance within), and intercepts between countries. The latter test is significant although no intercept was simulated to differ between countries: tests between strata are not trustworthy when invariance within strata does not hold.
+
+To find the school, look at the contribution of every cell to the chi-square, divided by the size of the cell:
+
+```{r cells-h}
+round(res.h$cell.discrepancy[, c("metric.within", "scalar.within")], 3)
+```
+
+School `C2_s3` stands out.
+
+**Pooled models.** The last row of each comparison table is what the conventional analysis would give: MGCFA across countries, ignoring schools. It silently assumes that schools within a country are invariant *and* have the same latent means and variances. Here it finds the difference in loadings, and also reports non-invariant intercepts between countries, which is the shifted school of C2 in disguise. When every country has at least as many schools as the model has free parameters, the test statistics of the pooled models are corrected for clustering in schools.
+
+# Intersectional mode
+
+Now two crossed variables, gender and ethnicity, with cells of unequal size. The loading of `v3` differs by ethnicity. The intercept of `v2` differs by gender. The intercept of `v4` is shifted only for women of ethnicity C, which is the smallest cell.
+
+```{r sim-i}
+set.seed(321)
+cells <- expand.grid(eth = c("A", "B", "C"), gender = c("m", "w"),
+                     stringsAsFactors = FALSE)
+dat.i <- do.call(rbind, lapply(seq_len(nrow(cells)), function(i) {
+  eth    <- cells$eth[i]
+  gender <- cells$gender[i]
+  d <- simulate_cell(
+    n = c(A = 600, B = 300, C = 150)[[eth]],
+    loadings   = c(1, .8, c(A = .5, B = .8, C = 1.1)[[eth]], .9, .6),
+    intercepts = c(0, if (gender == "w") .5 else .2, -.1,
+                   if (gender == "w" && eth == "C") 1 else .3, 0),
+    mean = if (gender == "w") .3 else 0)
+  d$gender <- gender
+  d$eth    <- eth
+  d
+}))
+```
+
+```{r run-i}
+res.i <- stratifiedMI2("F =~ v1 + v2 + v3 + v4 + v5", data = dat.i,
+                       group1 = "gender", group2 = "eth",
+                       mode = "intersectional")
+```
+
+## Models
+
+For each stage (`metric`: loadings; `scalar`: loadings and intercepts):
+
+| Model | Parameters |
+|---|---|
+| `configural` | differ across all cells |
+| `*.additive` | differ by gender and by ethnicity, no interaction |
+| `*.within.gender` | equal among cells of the same gender: differ by gender only |
+| `*.within.eth` | equal among cells of the same ethnicity: differ by ethnicity only |
+| `*.all` | equal across all cells |
+
+Mind the names: misfit of `*.within.gender` means non-invariance across *ethnicity*, because this is the model that ignores ethnicity.
+
+The two `within` models are not nested in each other, but both are nested in the additive model, which in turn is nested in the configural one. This gives three kinds of tests:
+
+* `configural` vs. `additive`: the interaction, that is, non-invariance specific to combinations of gender and ethnicity. This is the test of intersectionality proper.
+* `additive` vs. `within.gender`: the main effect of ethnicity; `additive` vs. `within.eth`: the main effect of gender.
+* `within` vs. `all`: the effect of one variable assuming the other has none.
+
+"No interaction" is defined multiplicatively for loadings, $\lambda_{ab}\lambda_{11} = \lambda_{a1}\lambda_{1b}$, which does not depend on the choice of the marker indicator. For intercepts it is additive, $\nu_{ab} + \nu_{11} = \nu_{a1} + \nu_{1b}$, which is independent of the marker only if the loadings are invariant. The additive models need every combination of the two variables to be present; otherwise they are skipped with a warning (set `additive = FALSE` to skip them yourself).
+
+## Reading the output
+
+**Metric stage.** There is no interaction in loadings and no main effect of gender, but a main effect of ethnicity. Accordingly, `metric.within.eth` fits as well as the configural model, and the by-stratum tables show ethnic non-invariance among both men and women.
+
+**Scalar stage.** There is an interaction in intercepts, and both main-effect tests are significant (the one of ethnicity includes its effect on loadings). The by-stratum tables help to locate the interaction: intercepts are not invariant across ethnicity among women only; they are not invariant across gender in every ethnicity, which is the main effect of gender, and most strongly in C.
+
+The global fit indices are dominated by the large cells. The per-cell discrepancies are not:
+
+```{r cells-i}
+round(res.i$cell.discrepancy[, c("configural", "scalar.additive", "scalar.all")], 3)
+```
+
+Under full scalar invariance, the smallest cell, `w_C`, fits by far the worst. Under the additive model the misfit is shared by the two cells of ethnicity C: an interaction is a property of a contrast between cells and cannot be attributed to one of them.
+
+# Returned object
+
+```{r obj}
+names(res.i)
+```
+
+`models` holds the fitted lavaan objects, so any of them can be inspected further, e.g. `summary(res.i$models$scalar.within.eth)` or `lavTestScore_clean(res.i$models$scalar.additive)`.
+
+Parameters can be exempted from all constraints with `group.partial`, and other arguments are passed to `lavaan::cfa()`:
+
+```{r partial}
+#| eval: false
+stratifiedMI2("F =~ v1 + v2 + v3 + v4 + v5", data = dat.i,
+              group1 = "gender", group2 = "eth", mode = "intersectional",
+              group.partial = c("v4~1", "F=~v3"), estimator = "MLR")
+```
+
+# Comparability of fit indices
+
+* All models that use the cells as groups are fitted to the same data and share the saturated and the baseline models. Their chi-square, CFI, RMSEA, SRMR, and BIC can be compared, and nested models can be tested against each other.
+* The `pooled.*` models are fitted to differently grouped data. Their fit is comparable only among themselves and should not be set beside the fit of the other models.
+* Differences in CFI and RMSEA depend on how many constraints a step adds, and this number differs a lot between steps (compare `df.diff` of the within and between steps). `rmsea.d`, the RMSEA of the difference test (Savalei, Brace, & Fouladi, 2023), is expressed per degree of freedom and does not depend on the fit of the baseline, so it is better suited for comparing steps.
+* The by-stratum tests use the unscaled chi-square, also with robust estimators.
+
+# Limitations
+
+* Every cell is a group with its own parameters, so cells have to be large enough to estimate the model. With many small lower-level units, such as actual classrooms, multilevel CFA is preferable.
+* Conventional cutoffs for differences in CFI and RMSEA were established for a few groups and global constraints; they are not calibrated for stratified models.
+* Tests between strata are interpretable only if invariance holds within strata.
+* Only continuous indicators and first-order factors identified by marker indicators are supported.
